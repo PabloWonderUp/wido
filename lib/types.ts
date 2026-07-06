@@ -50,6 +50,6 @@ export type StatusFilter = "all" | TaskStatus;
 
 export type SortMode = "manual" | "client" | "due";
 
-export type ViewMode = "list" | "board";
+export type ViewMode = "list" | "board" | "projects";
 
 export type BoardGroupBy = "status" | "client";

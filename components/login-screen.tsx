@@ -51,8 +51,9 @@ export function LoginScreen() {
         </p>
 
         <div className="mt-10 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            Sign in to sync your tasks across devices.
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            What happened? Can&apos;t remember what you were working on?
+            Don&apos;t worry — we&apos;ve got you.
           </p>
           <button
             onClick={handle}

@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ArrowUpDown,
+  FolderKanban,
   LayoutGrid,
   List as ListIcon,
   MessageSquare,
@@ -20,6 +21,7 @@ import {
 import { TaskInput } from "@/components/task-input";
 import { TaskList } from "@/components/task-list";
 import { BoardView } from "@/components/board-view";
+import { ProjectsView } from "@/components/projects-view";
 import { StatusFilter } from "@/components/status-filter";
 import { ClientFilter } from "@/components/client-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -54,6 +56,7 @@ export default function Home() {
     deleteTask,
     reorderTasks,
     setStatus: setTaskStatus,
+    toggleSubtask,
   } = useTasks();
   const { clients, getClient } = useClients();
 
@@ -194,7 +197,7 @@ export default function Home() {
       {/* View toggle + contextual control */}
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
-          {(["list", "board"] as ViewMode[]).map((v) => (
+          {(["list", "board", "projects"] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -207,10 +210,12 @@ export default function Home() {
             >
               {v === "list" ? (
                 <ListIcon className="h-3.5 w-3.5" />
-              ) : (
+              ) : v === "board" ? (
                 <LayoutGrid className="h-3.5 w-3.5" />
+              ) : (
+                <FolderKanban className="h-3.5 w-3.5" />
               )}
-              {v === "list" ? "List" : "Board"}
+              {v === "list" ? "List" : v === "board" ? "Board" : "Projects"}
             </button>
           ))}
         </div>
@@ -231,7 +236,7 @@ export default function Home() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
+        ) : view === "board" ? (
           <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
             {(["status", "client"] as BoardGroupBy[]).map((g) => (
               <button
@@ -248,7 +253,7 @@ export default function Home() {
               </button>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Filters (list view only) */}
@@ -292,6 +297,16 @@ export default function Home() {
       <div className="mt-6">
         {!hydrated ? (
           <ListSkeleton />
+        ) : view === "projects" ? (
+          <ProjectsView
+            tasks={tasks}
+            getClient={getClient}
+            onToggleSubtask={toggleSubtask}
+            onOpen={(id) => {
+              setView("list");
+              setExpandedId(id);
+            }}
+          />
         ) : view === "board" ? (
           <BoardView
             tasks={tasks}
