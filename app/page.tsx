@@ -21,6 +21,7 @@ import {
 import { TaskInput } from "@/components/task-input";
 import { TaskList } from "@/components/task-list";
 import { BoardView } from "@/components/board-view";
+import { BoardSwimlanes } from "@/components/board-swimlanes";
 import { ProjectsView } from "@/components/projects-view";
 import { StatusFilter } from "@/components/status-filter";
 import { ClientFilter } from "@/components/client-filter";
@@ -302,6 +303,20 @@ export default function Home() {
             tasks={tasks}
             getClient={getClient}
             onToggleSubtask={toggleSubtask}
+            onOpen={(id) => {
+              setView("list");
+              setExpandedId(id);
+            }}
+          />
+        ) : view === "board" && groupBy === "client" ? (
+          <BoardSwimlanes
+            tasks={tasks}
+            clients={clients}
+            getClient={getClient}
+            onToggle={toggleTask}
+            onSetClient={(id, clientId) => updateTask(id, { client: clientId })}
+            onSetStatus={setTaskStatus}
+            onReorder={reorderTasks}
             onOpen={(id) => {
               setView("list");
               setExpandedId(id);
