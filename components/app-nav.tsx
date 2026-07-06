@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListTodo, Timer } from "lucide-react";
+import { Clock, ListTodo, Timer } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/", label: "Tasks", icon: ListTodo },
   { href: "/timer", label: "Timer", icon: Timer },
+  { href: "/hours", label: "Hours", icon: Clock },
 ];
 
 export function AppNav() {

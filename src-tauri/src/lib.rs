@@ -8,10 +8,12 @@ pub fn run() {
         description: "create tasks and clients tables",
         sql: "
             CREATE TABLE IF NOT EXISTS clients (
-                id    TEXT PRIMARY KEY,
-                name  TEXT NOT NULL,
-                color TEXT NOT NULL,
-                logo  TEXT
+                id                 TEXT PRIMARY KEY,
+                name               TEXT NOT NULL,
+                color              TEXT NOT NULL,
+                logo               TEXT,
+                hourTracking       INTEGER NOT NULL DEFAULT 0,
+                monthlyHoursTarget REAL
             );
             CREATE TABLE IF NOT EXISTS tasks (
                 id          TEXT PRIMARY KEY,

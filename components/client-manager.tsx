@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ImagePlus, Plus, Trash2, Users, X } from "lucide-react";
+import { Clock, ImagePlus, Plus, Trash2, Users, X } from "lucide-react";
 
 import { cn, fileToLogoDataUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -148,7 +148,8 @@ function ClientRow({
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border p-2">
+    <div className="space-y-2 rounded-lg border border-border p-2">
+      <div className="flex items-center gap-2">
       {/* Logo / avatar */}
       <div className="relative">
         <button
@@ -229,6 +230,45 @@ function ClientRow({
       >
         <Trash2 className="h-4 w-4" />
       </button>
+      </div>
+
+      {/* Freelance hour tracking */}
+      <div className="flex flex-wrap items-center gap-2 pl-1">
+        <button
+          onClick={() => onUpdate({ hourTracking: !client.hourTracking })}
+          aria-pressed={client.hourTracking}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            client.hourTracking
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <Clock className="h-3.5 w-3.5" />
+          Hour tracking
+        </button>
+        {client.hourTracking && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Monthly goal
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={client.monthlyHoursTarget ?? ""}
+              onChange={(e) =>
+                onUpdate({
+                  monthlyHoursTarget: e.target.value
+                    ? Number(e.target.value)
+                    : undefined,
+                })
+              }
+              placeholder="—"
+              className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            h
+          </label>
+        )}
+      </div>
     </div>
   );
 }

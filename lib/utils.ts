@@ -93,6 +93,30 @@ export function formatDuration(totalSeconds: number): string {
   return `${sec}s`;
 }
 
+/** Seconds tracked for a client's tasks within a given month (year, 0-based month). */
+export function clientMonthSeconds(
+  tasks: Task[],
+  clientId: string,
+  year: number,
+  monthIndex: number
+): number {
+  const start = new Date(year, monthIndex, 1).getTime();
+  const end = new Date(year, monthIndex + 1, 1).getTime();
+  let sum = 0;
+  for (const t of tasks) {
+    if (t.client !== clientId) continue;
+    for (const e of t.timeEntries ?? []) {
+      if (e.createdAt >= start && e.createdAt < end) sum += e.seconds || 0;
+    }
+  }
+  return sum;
+}
+
+/** Seconds -> hours label, e.g. "12.5h". */
+export function formatHours(seconds: number): string {
+  return `${(seconds / 3600).toFixed(1)}h`;
+}
+
 /** Total tracked seconds for a task (sum of entries, with legacy fallback). */
 export function taskTotalSeconds(task: Task): number {
   if (task.timeEntries && task.timeEntries.length > 0) {

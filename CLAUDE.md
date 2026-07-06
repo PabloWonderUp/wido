@@ -29,8 +29,9 @@ scripts/        generate-icons.mjs
 
 ## Pages & nav
 
-Two real routes, switched by `AppNav` (Tasks / Timer): `/` (task list) and `/timer`.
+Routes switched by `AppNav` (navbar, extensible): `/` (tasks), `/timer`, `/hours`.
 - **Timer** = editable Pomodoro with **work + break cycle** (Focus/Break phases auto-alternate). Both durations have presets + a custom number input (`DurationRow`); tapping the clock edits the current phase. Start/Pause/Resume/Reset. Optionally "working on" a task → only **focus** seconds accumulate into the task via `addTime`. While running the screen goes clean and `LottieBackground` loops behind; a phase pill shows Focus/Break. Prefs (`workMin`,`breakMin`,`taskId`) persist in localStorage `task-tracker-timer`.
+- **Hours** (`/hours`): freelance monthly hour tracking. Enable per client in the manager (`hourTracking` + optional `monthlyHoursTarget`). The page sums each freelance client's task `timeEntries` for the viewed month (`clientMonthSeconds`), shows hours vs goal with a progress bar, and a prev/next month selector.
 - **Clients** managed via a shared dialog behind `ClientManagerProvider` (context: `useClientManager().open()`). Triggers: `ClientManagerButton` (header) and a "Manage clients & colors…" item in the in-task client dropdown. Add/rename/recolor (native color input)/delete + logo upload (downscaled via `fileToLogoDataUrl`). Deleting a client clears it from referencing tasks.
 
 ## Views, sort, projects
