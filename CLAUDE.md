@@ -36,6 +36,7 @@ Routes switched by `AppNav` (navbar, extensible): `/` (tasks), `/timer`, `/hours
 
 ## Views, sort, projects
 
+- **Auth/offline**: web shows `LoginScreen` (Google) with a **"Continue offline"** escape (`OfflineProvider`, localStorage `wido-offline`) → local mode without an account; sign-in later syncs to cloud. `AuthGate` passes when `user || offline`. Desktop (Tauri) is always local-first (offline) — real cloud login there needs a system-browser OAuth flow (not built; webview OAuth fails with bad_oauth_state).
 - **Statuses**: `Task.status: TaskStatus` ("todo"|"in_progress"|"blocked"|"done"), source of truth; `completed` kept in sync (=== "done"). `statusOf()` + `STATUS_META` (labels/colors) in lib/status.ts. Set via panel picker, board drag (`setStatus`), or the row checkbox (todo↔done). Legacy tasks migrated from `completed` on load. List status-filter chips = All + 4 statuses.
 - **List / Board / Projects** view toggle (persisted in localStorage `task-tracker-view` with sort + groupBy). List/Projects width `max-w-2xl`, board wide. **Projects** (`components/projects-view.tsx`) is a vertical list of project tasks, each showing status badge + client + a subtask progress bar (done/total) + its subtasks (toggle-able); click a project to open it in list view.
 - **List sort** (`SortMode`): Manual (drag order — DnD only enabled here via `dndDisabled` on TaskList/TaskItem), Client (by client name, unassigned last), Due date (ascending, no-due last).

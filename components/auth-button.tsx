@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { isTauri } from "@/lib/storage";
+import { useOffline } from "@/components/offline-provider";
 
 export function AuthButton() {
   const { configured, user, loading, signInWithGoogle, signOut } = useAuth();
+  const { setOffline } = useOffline();
 
   // Hidden until Supabase is configured, and on desktop (webview OAuth is
   // unreliable — desktop runs local-first).
@@ -62,7 +64,12 @@ export function AuthButton() {
           <div className="truncate font-medium text-foreground">{email}</div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={signOut}>
+        <DropdownMenuItem
+          onSelect={async () => {
+            await signOut();
+            setOffline(false);
+          }}
+        >
           <LogOut className="h-4 w-4" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>

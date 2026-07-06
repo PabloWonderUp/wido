@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { isTauri } from "@/lib/storage";
+import { useOffline } from "@/components/offline-provider";
 import { LoginScreen } from "@/components/login-screen";
 
 /**
@@ -15,8 +16,9 @@ import { LoginScreen } from "@/components/login-screen";
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { configured, user, loading } = useAuth();
+  const { offline } = useOffline();
 
-  if (isTauri()) return <>{children}</>;
+  if (isTauri()) return <>{children}</>; // desktop is local-first (offline)
   if (!configured) return <>{children}</>;
 
   if (loading) {
@@ -27,7 +29,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) return <LoginScreen />;
+  // Signed in OR chose to work offline.
+  if (user || offline) return <>{children}</>;
 
-  return <>{children}</>;
+  return <LoginScreen />;
 }

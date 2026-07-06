@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useOffline } from "@/components/offline-provider";
 
 /** GoogleG — the multicolor Google logo (button branding). */
 function GoogleG() {
@@ -30,6 +31,7 @@ function GoogleG() {
 
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth();
+  const { setOffline } = useOffline();
   const [busy, setBusy] = React.useState(false);
 
   const handle = async () => {
@@ -67,6 +69,16 @@ export function LoginScreen() {
             New here? The same button creates your account.
           </p>
         </div>
+
+        <button
+          onClick={() => setOffline(true)}
+          className="mt-4 text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+        >
+          Continue offline (no account)
+        </button>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Works locally on this device. Sign in later to sync.
+        </p>
       </div>
     </main>
   );

@@ -7,6 +7,7 @@ import { ServiceWorker } from "@/components/service-worker";
 import { ClientManagerProvider } from "@/components/client-manager";
 import { AuthSync } from "@/components/auth-sync";
 import { AuthGate } from "@/components/auth-gate";
+import { OfflineProvider } from "@/components/offline-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,9 +47,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ClientManagerProvider>
-            <AuthGate>{children}</AuthGate>
-          </ClientManagerProvider>
+          <OfflineProvider>
+            <ClientManagerProvider>
+              <AuthGate>{children}</AuthGate>
+            </ClientManagerProvider>
+          </OfflineProvider>
           <AuthSync />
           <ServiceWorker />
         </ThemeProvider>
