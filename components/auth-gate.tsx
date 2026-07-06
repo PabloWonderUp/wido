@@ -4,15 +4,19 @@ import * as React from "react";
 import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
+import { isTauri } from "@/lib/storage";
 import { LoginScreen } from "@/components/login-screen";
 
 /**
- * Requires sign-in before the app is usable. When Supabase isn't configured
- * (no env vars) it falls through to local-only mode so dev never bricks.
+ * Requires sign-in before the app is usable (web). Two exceptions fall through
+ * to local mode: Supabase not configured (dev never bricks), and the desktop
+ * app — Google OAuth is unreliable inside the Tauri webview, so desktop is
+ * local-first (SQLite). Real desktop login needs a system-browser OAuth flow.
  */
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { configured, user, loading } = useAuth();
 
+  if (isTauri()) return <>{children}</>;
   if (!configured) return <>{children}</>;
 
   if (loading) {

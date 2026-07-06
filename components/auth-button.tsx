@@ -12,11 +12,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
+import { isTauri } from "@/lib/storage";
 
 export function AuthButton() {
   const { configured, user, loading, signInWithGoogle, signOut } = useAuth();
 
-  // Hidden entirely until Supabase is configured (app stays local-only).
+  // Hidden until Supabase is configured, and on desktop (webview OAuth is
+  // unreliable — desktop runs local-first).
+  if (isTauri()) return null;
   if (!configured) return null;
   if (loading) return null;
 
