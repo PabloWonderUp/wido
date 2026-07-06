@@ -13,7 +13,8 @@ pub fn run() {
                 color              TEXT NOT NULL,
                 logo               TEXT,
                 hourTracking       INTEGER NOT NULL DEFAULT 0,
-                monthlyHoursTarget REAL
+                monthlyHoursTarget REAL,
+                hourlyRate         REAL
             );
             CREATE TABLE IF NOT EXISTS tasks (
                 id          TEXT PRIMARY KEY,

@@ -1,11 +1,31 @@
 "use client";
 
-import { Check, FolderKanban } from "lucide-react";
+import * as React from "react";
+import { ArrowUpDown, Check, FolderKanban } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { STATUS_META, statusOf } from "@/lib/status";
 import { ClientBadge } from "@/components/client-badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Client, Task } from "@/lib/types";
+
+type ProjectSort = "order" | "progress" | "name";
+const SORT_LABELS: Record<ProjectSort, string> = {
+  order: "Manual",
+  progress: "Progress",
+  name: "Name",
+};
+
+function progressFraction(t: Task): number {
+  const subs = t.subtasks ?? [];
+  if (subs.length > 0) return subs.filter((s) => s.completed).length / subs.length;
+  return statusOf(t) === "done" ? 1 : 0;
+}
 
 interface ProjectsViewProps {
   tasks: Task[];
@@ -21,7 +41,16 @@ export function ProjectsView({
   onToggleSubtask,
   onOpen,
 }: ProjectsViewProps) {
+  const [sort, setSort] = React.useState<ProjectSort>("order");
+
   const projects = tasks.filter((t) => t.isProject);
+  const sorted = React.useMemo(() => {
+    const arr = [...projects];
+    if (sort === "progress") arr.sort((a, b) => progressFraction(a) - progressFraction(b));
+    else if (sort === "name") arr.sort((a, b) => a.title.localeCompare(b.title));
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, sort]);
 
   if (projects.length === 0) {
     return (
@@ -37,7 +66,24 @@ export function ProjectsView({
 
   return (
     <div className="space-y-4">
-      {projects.map((p) => {
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              Sort: {SORT_LABELS[sort]}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(Object.keys(SORT_LABELS) as ProjectSort[]).map((s) => (
+              <DropdownMenuItem key={s} onSelect={() => setSort(s)}>
+                {SORT_LABELS[s]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {sorted.map((p) => {
         const subs = p.subtasks ?? [];
         const done = subs.filter((s) => s.completed).length;
         const total = subs.length;

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
-import { cn, clientMonthSeconds, formatHours } from "@/lib/utils";
+import { cn, clientMonthSeconds, formatHours, formatMoney } from "@/lib/utils";
 import { AppNav } from "@/components/app-nav";
 import { useTasks } from "@/hooks/use-tasks";
 import { useClients } from "@/hooks/use-clients";
@@ -31,10 +31,13 @@ export default function HoursPage() {
     const hours = seconds / 3600;
     const target = c.monthlyHoursTarget ?? 0;
     const pct = target > 0 ? Math.min(100, Math.round((hours / target) * 100)) : 0;
-    return { client: c, seconds, hours, target, pct };
+    const rate = c.hourlyRate ?? 0;
+    const amount = hours * rate;
+    return { client: c, seconds, hours, target, pct, rate, amount };
   });
 
   const totalSeconds = rows.reduce((s, r) => s + r.seconds, 0);
+  const totalMoney = rows.reduce((s, r) => s + r.amount, 0);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 py-10 sm:px-6">
@@ -46,8 +49,15 @@ export default function HoursPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Hours</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {formatHours(totalSeconds)} tracked this month across freelance
-            clients
+            {formatHours(totalSeconds)} tracked this month
+            {totalMoney > 0 && (
+              <>
+                {" · "}
+                <span className="font-medium text-foreground">
+                  {formatMoney(totalMoney)}
+                </span>
+              </>
+            )}
           </p>
         </div>
         {/* Month selector */}
@@ -89,7 +99,7 @@ export default function HoursPage() {
             </p>
           </div>
         ) : (
-          rows.map(({ client, seconds, hours, target, pct }) => (
+          rows.map(({ client, seconds, hours, target, pct, rate, amount }) => (
             <div
               key={client.id}
               className="rounded-xl border border-border bg-card p-4 shadow-sm"
@@ -111,10 +121,17 @@ export default function HoursPage() {
                   )}
                   <span className="truncate font-semibold">{client.name}</span>
                 </span>
-                <span className="shrink-0 text-sm tabular-nums">
-                  <span className="font-semibold">{formatHours(seconds)}</span>
-                  {target > 0 && (
-                    <span className="text-muted-foreground"> / {target}h</span>
+                <span className="shrink-0 text-right text-sm tabular-nums">
+                  <span className="block">
+                    <span className="font-semibold">{formatHours(seconds)}</span>
+                    {target > 0 && (
+                      <span className="text-muted-foreground"> / {target}h</span>
+                    )}
+                  </span>
+                  {rate > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {formatMoney(amount)} @ ${rate}/h
+                    </span>
                   )}
                 </span>
               </div>

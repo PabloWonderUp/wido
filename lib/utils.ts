@@ -117,6 +117,11 @@ export function formatHours(seconds: number): string {
   return `${(seconds / 3600).toFixed(1)}h`;
 }
 
+/** Amount -> money label, e.g. "$1,250". */
+export function formatMoney(amount: number): string {
+  return `$${Math.round(amount).toLocaleString()}`;
+}
+
 /** Total tracked seconds for a task (sum of entries, with legacy fallback). */
 export function taskTotalSeconds(task: Task): number {
   if (task.timeEntries && task.timeEntries.length > 0) {

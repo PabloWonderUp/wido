@@ -41,6 +41,7 @@ export interface Client {
   logo?: string; // optional logo as a data URL (or emoji)
   hourTracking?: boolean; // freelance mode: track monthly hours for this client
   monthlyHoursTarget?: number; // optional monthly hours goal
+  hourlyRate?: number; // optional $/hour to compute earnings
 }
 
 export interface AppState {

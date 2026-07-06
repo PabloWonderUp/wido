@@ -59,6 +59,7 @@ interface ClientRow {
   logo: string | null;
   hourTracking: number;
   monthlyHoursTarget: number | null;
+  hourlyRate: number | null;
 }
 
 export const sqliteAdapter: StorageAdapter = {
@@ -66,7 +67,7 @@ export const sqliteAdapter: StorageAdapter = {
     const db = await getDb();
 
     const clientRows = (await db.select(
-      "SELECT id, name, color, logo, hourTracking, monthlyHoursTarget FROM clients"
+      "SELECT id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate FROM clients"
     )) as ClientRow[];
     const clients: Client[] = clientRows.map((c) => ({
       id: c.id,
@@ -75,6 +76,7 @@ export const sqliteAdapter: StorageAdapter = {
       logo: c.logo ?? undefined,
       hourTracking: !!c.hourTracking,
       monthlyHoursTarget: c.monthlyHoursTarget ?? undefined,
+      hourlyRate: c.hourlyRate ?? undefined,
     }));
 
     const taskRows = (await db.select(
@@ -125,7 +127,7 @@ export const sqliteAdapter: StorageAdapter = {
 
       for (const c of state.clients) {
         await db.execute(
-          "INSERT INTO clients (id, name, color, logo, hourTracking, monthlyHoursTarget) VALUES ($1, $2, $3, $4, $5, $6)",
+          "INSERT INTO clients (id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate) VALUES ($1, $2, $3, $4, $5, $6, $7)",
           [
             c.id,
             c.name,
@@ -133,6 +135,7 @@ export const sqliteAdapter: StorageAdapter = {
             c.logo ?? null,
             c.hourTracking ? 1 : 0,
             c.monthlyHoursTarget ?? null,
+            c.hourlyRate ?? null,
           ]
         );
       }

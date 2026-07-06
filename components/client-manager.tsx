@@ -248,25 +248,46 @@ function ClientRow({
           Hour tracking
         </button>
         {client.hourTracking && (
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Monthly goal
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={client.monthlyHoursTarget ?? ""}
-              onChange={(e) =>
-                onUpdate({
-                  monthlyHoursTarget: e.target.value
-                    ? Number(e.target.value)
-                    : undefined,
-                })
-              }
-              placeholder="—"
-              className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            />
-            h
-          </label>
+          <>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Monthly goal
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={client.monthlyHoursTarget ?? ""}
+                onChange={(e) =>
+                  onUpdate({
+                    monthlyHoursTarget: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
+                }
+                placeholder="—"
+                className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              h
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              Rate $
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={client.hourlyRate ?? ""}
+                onChange={(e) =>
+                  onUpdate({
+                    hourlyRate: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
+                }
+                placeholder="—"
+                className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              /h
+            </label>
+          </>
         )}
       </div>
     </div>
