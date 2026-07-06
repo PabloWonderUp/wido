@@ -1,4 +1,11 @@
-import type { AppState, Client, Task, TimeEntry } from "../types";
+import type {
+  AppState,
+  Client,
+  SubTask,
+  Task,
+  TaskStatus,
+  TimeEntry,
+} from "../types";
 import type { StorageAdapter } from "./index";
 
 /**
@@ -31,6 +38,7 @@ interface TaskRow {
   details: string | null;
   client: string | null;
   completed: number;
+  status: string | null;
   order: number;
   createdAt: number;
   completedAt: number | null;
@@ -40,6 +48,8 @@ interface TaskRow {
   dueAt: number | null;
   timeSpent: number;
   timeEntries: string | null;
+  isProject: number;
+  subtasks: string | null;
 }
 
 interface ClientRow {
@@ -64,14 +74,14 @@ export const sqliteAdapter: StorageAdapter = {
     }));
 
     const taskRows = (await db.select(
-      'SELECT id, title, details, client, completed, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries FROM tasks'
+      'SELECT id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries, isProject, subtasks FROM tasks'
     )) as TaskRow[];
 
-    const parseEntries = (raw: string | null): TimeEntry[] | undefined => {
+    const parseJson = <T,>(raw: string | null): T[] | undefined => {
       if (!raw) return undefined;
       try {
         const arr = JSON.parse(raw);
-        return Array.isArray(arr) ? arr : undefined;
+        return Array.isArray(arr) ? (arr as T[]) : undefined;
       } catch {
         return undefined;
       }
@@ -83,6 +93,7 @@ export const sqliteAdapter: StorageAdapter = {
       details: r.details ?? undefined,
       client: r.client ?? undefined,
       completed: !!r.completed,
+      status: (r.status as TaskStatus) ?? undefined,
       order: r.order,
       createdAt: r.createdAt,
       completedAt: r.completedAt ?? undefined,
@@ -91,7 +102,9 @@ export const sqliteAdapter: StorageAdapter = {
       replyNote: r.replyNote ?? undefined,
       dueAt: r.dueAt ?? undefined,
       timeSpent: r.timeSpent ?? 0,
-      timeEntries: parseEntries(r.timeEntries),
+      timeEntries: parseJson<TimeEntry>(r.timeEntries),
+      isProject: !!r.isProject,
+      subtasks: parseJson<SubTask>(r.subtasks),
     }));
 
     return { tasks, clients };
@@ -115,13 +128,14 @@ export const sqliteAdapter: StorageAdapter = {
 
       for (const t of state.tasks) {
         await db.execute(
-          'INSERT INTO tasks (id, title, details, client, completed, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
+          'INSERT INTO tasks (id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries, isProject, subtasks) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)',
           [
             t.id,
             t.title,
             t.details ?? null,
             t.client ?? null,
             t.completed ? 1 : 0,
+            t.status ?? null,
             t.order,
             t.createdAt,
             t.completedAt ?? null,
@@ -131,6 +145,8 @@ export const sqliteAdapter: StorageAdapter = {
             t.dueAt ?? null,
             t.timeSpent ?? 0,
             t.timeEntries ? JSON.stringify(t.timeEntries) : null,
+            t.isProject ? 1 : 0,
+            t.subtasks ? JSON.stringify(t.subtasks) : null,
           ]
         );
       }

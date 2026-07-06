@@ -1,13 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { STATUSES, STATUS_META } from "@/lib/status";
 import type { StatusFilter as StatusFilterValue } from "@/lib/types";
-
-const OPTIONS: { value: StatusFilterValue; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "done", label: "Done" },
-];
 
 interface StatusFilterProps {
   value: StatusFilterValue;
@@ -15,9 +10,14 @@ interface StatusFilterProps {
 }
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
+  const options: { value: StatusFilterValue; label: string }[] = [
+    { value: "all", label: "All" },
+    ...STATUSES.map((s) => ({ value: s, label: STATUS_META[s].label })),
+  ];
+
   return (
     <div className="flex flex-wrap gap-2">
-      {OPTIONS.map((opt) => {
+      {options.map((opt) => {
         const active = opt.value === value;
         return (
           <button

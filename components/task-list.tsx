@@ -28,6 +28,7 @@ interface TaskListProps {
   onUpdate: (id: string, updates: Partial<Task>) => void;
   onDelete: (id: string) => void;
   onReorder: (orderedIds: string[]) => void;
+  dndDisabled?: boolean;
 }
 
 export function TaskList({
@@ -38,6 +39,7 @@ export function TaskList({
   onUpdate,
   onDelete,
   onReorder,
+  dndDisabled,
 }: TaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -78,6 +80,7 @@ export function TaskList({
               onToggle={() => onToggle(task.id)}
               onUpdate={(updates) => onUpdate(task.id, updates)}
               onDelete={() => onDelete(task.id)}
+              dndDisabled={dndDisabled}
             />
           ))}
         </div>

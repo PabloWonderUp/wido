@@ -1,4 +1,6 @@
-# Tasks — minimal personal task tracker
+# Wido — what you're working on
+
+A minimal personal task tracker.
 
 A single-page, no-login checklist. Runs as a **website**, an **installable PWA**, and a
 **native desktop app** (Tauri) — from one codebase.
@@ -28,7 +30,7 @@ Supabase) means writing one more adapter — the data model doesn't change.
 
 ```bash
 npm install
-npm run dev      # http://localhost:3000
+npm run dev      # http://localhost:3002 (fixed port; frees it first so it never bounces)
 npm run build    # static export -> ./out  (deploys to Vercel as-is)
 ```
 

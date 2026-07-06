@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { makeId } from "@/lib/utils";
-import type { Task } from "@/lib/types";
+import type { Task, TaskStatus } from "@/lib/types";
 import {
   getState,
   hydrate,
@@ -31,6 +31,7 @@ export function useTasks() {
         id: makeId(),
         title: trimmed,
         completed: false,
+        status: "todo",
         order: minOrder - 1, // newest on top
         createdAt: Date.now(),
       };
@@ -41,15 +42,33 @@ export function useTasks() {
   const toggleTask = (id: string) => {
     setState((prev) => ({
       ...prev,
-      tasks: prev.tasks.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              completed: !t.completed,
-              completedAt: !t.completed ? Date.now() : undefined,
-            }
-          : t
-      ),
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== id) return t;
+        const nowDone = !t.completed;
+        return {
+          ...t,
+          completed: nowDone,
+          status: nowDone ? "done" : "todo",
+          completedAt: nowDone ? Date.now() : undefined,
+        };
+      }),
+    }));
+  };
+
+  /** Set an explicit workflow status; keeps `completed`/`completedAt` in sync. */
+  const setStatus = (id: string, status: TaskStatus) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => {
+        if (t.id !== id) return t;
+        const done = status === "done";
+        return {
+          ...t,
+          status,
+          completed: done,
+          completedAt: done ? t.completedAt ?? Date.now() : undefined,
+        };
+      }),
     }));
   };
 
@@ -128,6 +147,65 @@ export function useTasks() {
     }));
   };
 
+  // --- Subtasks (inside a project task) ---
+
+  const addSubtask = (id: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const sub = { id: makeId(), title: trimmed, completed: false };
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? { ...t, isProject: true, subtasks: [...(t.subtasks ?? []), sub] }
+          : t
+      ),
+    }));
+  };
+
+  const toggleSubtask = (id: string, subId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              subtasks: (t.subtasks ?? []).map((s) =>
+                s.id === subId ? { ...s, completed: !s.completed } : s
+              ),
+            }
+          : t
+      ),
+    }));
+  };
+
+  const updateSubtask = (id: string, subId: string, title: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              subtasks: (t.subtasks ?? []).map((s) =>
+                s.id === subId ? { ...s, title } : s
+              ),
+            }
+          : t
+      ),
+    }));
+  };
+
+  const deleteSubtask = (id: string, subId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? { ...t, subtasks: (t.subtasks ?? []).filter((s) => s.id !== subId) }
+          : t
+      ),
+    }));
+  };
+
   const deleteTask = (id: string) => {
     setState((prev) => ({
       ...prev,
@@ -166,6 +244,7 @@ export function useTasks() {
     hydrated,
     addTask,
     toggleTask,
+    setStatus,
     updateTask,
     deleteTask,
     reorderTasks,
@@ -173,5 +252,9 @@ export function useTasks() {
     addManualTime,
     updateTimeEntry,
     deleteTimeEntry,
+    addSubtask,
+    toggleSubtask,
+    updateSubtask,
+    deleteSubtask,
   };
 }

@@ -19,6 +19,7 @@ pub fn run() {
                 details     TEXT,
                 client      TEXT,
                 completed   INTEGER NOT NULL DEFAULT 0,
+                status      TEXT,
                 \"order\"   INTEGER NOT NULL DEFAULT 0,
                 createdAt   INTEGER NOT NULL,
                 completedAt INTEGER,
@@ -27,7 +28,9 @@ pub fn run() {
                 replyNote   TEXT,
                 dueAt       INTEGER,
                 timeSpent   INTEGER NOT NULL DEFAULT 0,
-                timeEntries TEXT
+                timeEntries TEXT,
+                isProject   INTEGER NOT NULL DEFAULT 0,
+                subtasks    TEXT
             );
         ",
         kind: MigrationKind::Up,

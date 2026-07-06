@@ -1,11 +1,11 @@
 # CLAUDE.md
 
-Personal task tracker. One page, no login, local-first. Runs as **web / PWA / Tauri desktop** from one codebase. Philosophy: **simple > completo** — if in doubt about a feature, it doesn't go in.
+**Wido** ("what I'm doing") — personal task tracker. One page, local-first. Runs as **web / PWA / Tauri desktop** from one codebase. Philosophy: **simple > completo** — if in doubt about a feature, it doesn't go in.
 
 ## Commands
 
 ```bash
-npm run dev          # Next dev server (localhost:3000)
+npm run dev          # Next dev server — ALWAYS localhost:3002 (scripts/dev.mjs frees the port first so it never bounces; localStorage is per-origin, so a stable port keeps data in one place)
 npm run build        # static export -> ./out  (this is the prod build; deploys to Vercel as-is)
 npm run icons        # regenerate PWA/Tauri icons from an SVG (scripts/generate-icons.mjs)
 npm run tauri:dev    # desktop app, hot reload   (needs Rust: https://rustup.rs)
@@ -30,8 +30,16 @@ scripts/        generate-icons.mjs
 ## Pages & nav
 
 Two real routes, switched by `AppNav` (Tasks / Timer): `/` (task list) and `/timer`.
-- **Timer** = editable Pomodoro (presets 15/25/45/60, tap the clock to edit minutes). Start/Pause/Resume/Reset. Optionally "working on" a task → tracked focus seconds accumulate into `task.timeSpent` via `addTime`. While running the screen goes clean (nav/selector hidden) and `LottieBackground` loops behind. Timer prefs persist in localStorage `task-tracker-timer` (separate from the main store).
+- **Timer** = editable Pomodoro with **work + break cycle** (Focus/Break phases auto-alternate). Both durations have presets + a custom number input (`DurationRow`); tapping the clock edits the current phase. Start/Pause/Resume/Reset. Optionally "working on" a task → only **focus** seconds accumulate into the task via `addTime`. While running the screen goes clean and `LottieBackground` loops behind; a phase pill shows Focus/Break. Prefs (`workMin`,`breakMin`,`taskId`) persist in localStorage `task-tracker-timer`.
 - **Clients** managed via a shared dialog behind `ClientManagerProvider` (context: `useClientManager().open()`). Triggers: `ClientManagerButton` (header) and a "Manage clients & colors…" item in the in-task client dropdown. Add/rename/recolor (native color input)/delete + logo upload (downscaled via `fileToLogoDataUrl`). Deleting a client clears it from referencing tasks.
+
+## Views, sort, projects
+
+- **Statuses**: `Task.status: TaskStatus` ("todo"|"in_progress"|"blocked"|"done"), source of truth; `completed` kept in sync (=== "done"). `statusOf()` + `STATUS_META` (labels/colors) in lib/status.ts. Set via panel picker, board drag (`setStatus`), or the row checkbox (todo↔done). Legacy tasks migrated from `completed` on load. List status-filter chips = All + 4 statuses.
+- **List / Board** view toggle (persisted in localStorage `task-tracker-view` with sort + groupBy). List width `max-w-2xl`, board `max-w-6xl`.
+- **List sort** (`SortMode`): Manual (drag order — DnD only enabled here via `dndDisabled` on TaskList/TaskItem), Client (by client name, unassigned last), Due date (ascending, no-due last).
+- **Board** (`components/board-view.tsx`): group by Status (To Do/Done) or Client (column per client + "No client"). @dnd-kit multi-container; dragging a card to another column reassigns the field (`onSetCompleted`/`onSetClient`) and `onReorder` rebuilds the global order from the columns. Cards toggle done + open the task in list view. Board shows all tasks (list filters don't apply).
+- **Project tasks**: `Task.isProject` + `Task.subtasks: SubTask[]` (checklist). Toggle "Make project" in the panel reveals the subtask checklist (add/toggle/edit/delete via use-tasks `addSubtask`/`toggleSubtask`/`updateSubtask`/`deleteSubtask`). Row + card show a violet progress pill (done/total). Persisted in SQLite as `isProject` + `subtasks` JSON.
 
 ## Time tracking model
 

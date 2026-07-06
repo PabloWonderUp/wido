@@ -1,3 +1,11 @@
+export type TaskStatus = "todo" | "in_progress" | "blocked" | "done";
+
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface TimeEntry {
   id: string;
   seconds: number;
@@ -11,7 +19,8 @@ export interface Task {
   title: string;
   details?: string;
   client?: string; // Client id
-  completed: boolean;
+  completed: boolean; // kept in sync with status === "done"
+  status?: TaskStatus; // authoritative workflow state
   order: number;
   createdAt: number;
   completedAt?: number; // set when marked done — powers the "done today" count
@@ -21,6 +30,8 @@ export interface Task {
   dueAt?: number; // optional due date + time (timestamp)
   timeSpent?: number; // legacy aggregate; migrated into timeEntries on load
   timeEntries?: TimeEntry[]; // logged time blocks (timer + manual)
+  isProject?: boolean; // marked as a project (holds subtasks)
+  subtasks?: SubTask[]; // checklist inside a project task
 }
 
 export interface Client {
@@ -35,4 +46,10 @@ export interface AppState {
   clients: Client[];
 }
 
-export type StatusFilter = "all" | "pending" | "done";
+export type StatusFilter = "all" | TaskStatus;
+
+export type SortMode = "manual" | "client" | "due";
+
+export type ViewMode = "list" | "board";
+
+export type BoardGroupBy = "status" | "client";

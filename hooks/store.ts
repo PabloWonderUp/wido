@@ -9,9 +9,10 @@ function migrate(state: AppState): AppState {
   return {
     ...state,
     tasks: state.tasks.map((t) => {
+      let next = t;
       if (t.timeSpent && t.timeSpent > 0 && !(t.timeEntries?.length)) {
-        return {
-          ...t,
+        next = {
+          ...next,
           timeSpent: undefined,
           timeEntries: [
             {
@@ -23,7 +24,10 @@ function migrate(state: AppState): AppState {
           ],
         };
       }
-      return t;
+      if (!next.status) {
+        next = { ...next, status: next.completed ? "done" : "todo" };
+      }
+      return next;
     }),
   };
 }

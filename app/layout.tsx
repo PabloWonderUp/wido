@@ -12,12 +12,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tasks",
-  description: "A minimal personal task tracker.",
+  title: "Wido",
+  description: "Wido — what you're working on.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Tasks",
+    title: "Wido",
     statusBarStyle: "black-translucent",
   },
   icons: {

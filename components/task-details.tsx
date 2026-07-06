@@ -5,6 +5,7 @@ import {
   CalendarClock,
   Check,
   Clock,
+  FolderKanban,
   MessageSquare,
   Plus,
   Settings2,
@@ -32,6 +33,7 @@ import {
 import { useClients } from "@/hooks/use-clients";
 import { useTasks } from "@/hooks/use-tasks";
 import { useClientManager } from "@/components/client-manager";
+import { STATUSES, STATUS_META, statusOf } from "@/lib/status";
 import type { Task, TimeEntry } from "@/lib/types";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
@@ -66,7 +68,17 @@ interface TaskDetailsProps {
 
 export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
   const { clients, addClient, getClient } = useClients();
-  const { addManualTime, updateTimeEntry, deleteTimeEntry } = useTasks();
+  const {
+    setStatus,
+    addManualTime,
+    updateTimeEntry,
+    deleteTimeEntry,
+    addSubtask,
+    toggleSubtask,
+    updateSubtask,
+    deleteSubtask,
+  } = useTasks();
+  const [newSubtask, setNewSubtask] = React.useState("");
   const { open: openClientManager } = useClientManager();
   const [title, setTitle] = React.useState(task.title);
   const [details, setDetails] = React.useState(task.details ?? "");
@@ -141,6 +153,28 @@ export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
         placeholder="Task title"
         className="w-full rounded-md bg-transparent text-sm font-semibold outline-none focus-visible:bg-accent focus-visible:px-2 focus-visible:py-1"
       />
+
+      {/* Status picker */}
+      <div className="flex flex-wrap gap-1.5">
+        {STATUSES.map((s) => {
+          const meta = STATUS_META[s];
+          const active = statusOf(task) === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatus(task.id, s)}
+              className="rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+              style={
+                active
+                  ? { backgroundColor: meta.color, color: "#fff" }
+                  : { backgroundColor: `${meta.color}1f`, color: meta.color }
+              }
+            >
+              {meta.label}
+            </button>
+          );
+        })}
+      </div>
 
       {editing ? (
         <Textarea
@@ -243,7 +277,52 @@ export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
           <MessageSquare className="h-3.5 w-3.5" />
           {task.needsReply ? "To reply" : "Mark to reply"}
         </button>
+
+        <button
+          onClick={() => onUpdate({ isProject: !task.isProject })}
+          aria-pressed={task.isProject}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+            task.isProject
+              ? "text-violet-500 hover:bg-violet-500/10"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <FolderKanban className="h-3.5 w-3.5" />
+          {task.isProject ? "Project" : "Make project"}
+        </button>
       </div>
+
+      {/* Subtasks (project) */}
+      {task.isProject && (
+        <div className="space-y-1.5 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+          {(task.subtasks ?? []).map((sub) => (
+            <SubtaskRow
+              key={sub.id}
+              title={sub.title}
+              completed={sub.completed}
+              onToggle={() => toggleSubtask(task.id, sub.id)}
+              onChange={(title) => updateSubtask(task.id, sub.id, title)}
+              onDelete={() => deleteSubtask(task.id, sub.id)}
+            />
+          ))}
+          <div className="flex items-center gap-2 pt-1">
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={newSubtask}
+              onChange={(e) => setNewSubtask(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && newSubtask.trim()) {
+                  addSubtask(task.id, newSubtask);
+                  setNewSubtask("");
+                }
+              }}
+              placeholder="Add subtask…"
+              className="h-7 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Due date + time */}
       <div className="flex items-center gap-2">
@@ -326,6 +405,64 @@ export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
           <Plus className="h-3.5 w-3.5" /> Add time block
         </button>
       </div>
+    </div>
+  );
+}
+
+function SubtaskRow({
+  title,
+  completed,
+  onToggle,
+  onChange,
+  onDelete,
+}: {
+  title: string;
+  completed: boolean;
+  onToggle: () => void;
+  onChange: (title: string) => void;
+  onDelete: () => void;
+}) {
+  const [value, setValue] = React.useState(title);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== title) onChange(trimmed);
+    else setValue(title);
+  };
+
+  return (
+    <div className="group/sub flex items-center gap-2">
+      <button
+        onClick={onToggle}
+        aria-label={completed ? "Mark undone" : "Mark done"}
+        className={cn(
+          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+          completed
+            ? "border-violet-500 bg-violet-500 text-white"
+            : "border-input hover:border-violet-500"
+        )}
+      >
+        {completed && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }}
+        className={cn(
+          "h-7 flex-1 bg-transparent text-sm outline-none focus-visible:bg-accent",
+          completed && "text-muted-foreground line-through"
+        )}
+      />
+      <button
+        onClick={onDelete}
+        aria-label="Delete subtask"
+        className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/sub:opacity-100"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   ChevronDown,
   Clock,
+  FolderKanban,
   GripVertical,
   MessageSquare,
   Trash2,
@@ -19,6 +20,7 @@ import {
   formatDuration,
   taskTotalSeconds,
 } from "@/lib/utils";
+import { STATUS_META, statusOf } from "@/lib/status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientBadge } from "@/components/client-badge";
 import { TaskDetails } from "@/components/task-details";
@@ -32,6 +34,7 @@ interface TaskItemProps {
   onToggle: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+  dndDisabled?: boolean;
 }
 
 export function TaskItem({
@@ -41,6 +44,7 @@ export function TaskItem({
   onToggle,
   onUpdate,
   onDelete,
+  dndDisabled,
 }: TaskItemProps) {
   const { getClient } = useClients();
   const client = getClient(task.client);
@@ -55,7 +59,7 @@ export function TaskItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: dndDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -84,14 +88,18 @@ export function TaskItem({
     >
       <div className="flex items-center gap-2">
         {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          aria-label="Drag to reorder"
-          className="cursor-grab touch-none rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-muted-foreground active:cursor-grabbing"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {dndDisabled ? (
+          <span className="w-0" />
+        ) : (
+          <button
+            {...attributes}
+            {...listeners}
+            aria-label="Drag to reorder"
+            className="cursor-grab touch-none rounded p-0.5 text-muted-foreground/50 transition-colors hover:text-muted-foreground active:cursor-grabbing"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
 
         <Checkbox
           checked={task.completed}
@@ -134,6 +142,37 @@ export function TaskItem({
               )}
             >
               {task.title}
+            </span>
+          )}
+
+          {(() => {
+            const st = statusOf(task);
+            if (st !== "in_progress" && st !== "blocked") return null;
+            const meta = STATUS_META[st];
+            return (
+              <span
+                className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${meta.color}22`,
+                  color: meta.color,
+                }}
+              >
+                {meta.label}
+              </span>
+            );
+          })()}
+
+          {task.isProject && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-500"
+              title="Project"
+            >
+              <FolderKanban className="h-3 w-3" />
+              {(task.subtasks?.length ?? 0) > 0
+                ? `${task.subtasks!.filter((s) => s.completed).length}/${
+                    task.subtasks!.length
+                  }`
+                : "Project"}
             </span>
           )}
 

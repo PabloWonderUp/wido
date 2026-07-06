@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Pause, Play, RotateCcw, Target, X } from "lucide-react";
+import { Check, Coffee, Pause, Play, RotateCcw, Target, X } from "lucide-react";
 
 import { cn, formatClock, formatDuration, taskTotalSeconds } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,21 @@ import { LottieBackground } from "@/components/lottie-background";
 import { useTasks } from "@/hooks/use-tasks";
 
 type Status = "idle" | "running" | "paused";
+type Phase = "focus" | "break";
 
 const PREFS_KEY = "task-tracker-timer";
-const PRESETS = [15, 25, 45, 60];
+const WORK_PRESETS = [15, 25, 45, 60];
+const BREAK_PRESETS = [5, 10, 15];
+
+const FOCUS_COLOR = "#3B82F6";
+const BREAK_COLOR = "#22C55E";
 
 export default function TimerPage() {
   const { tasks, hydrated, addTime } = useTasks();
 
-  const [durationMin, setDurationMin] = React.useState(25);
+  const [workMin, setWorkMin] = React.useState(25);
+  const [breakMin, setBreakMin] = React.useState(5);
+  const [phase, setPhase] = React.useState<Phase>("focus");
   const [remaining, setRemaining] = React.useState(25 * 60); // seconds
   const [status, setStatus] = React.useState<Status>("idle");
   const [taskId, setTaskId] = React.useState<string | null>(null);
@@ -32,19 +39,24 @@ export default function TimerPage() {
   const [editValue, setEditValue] = React.useState("25");
 
   const endRef = React.useRef<number>(0); // when remaining hits 0 (ms epoch)
-  const segStartRef = React.useRef<number>(0); // remaining at segment start (s)
+  const segStartRef = React.useRef<number>(0); // remaining at focus-segment start
 
   // Load prefs once.
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(PREFS_KEY);
       if (raw) {
-        const p = JSON.parse(raw) as { durationMin?: number; taskId?: string };
-        if (p.durationMin && p.durationMin > 0) {
-          setDurationMin(p.durationMin);
-          setRemaining(p.durationMin * 60);
-          setEditValue(String(p.durationMin));
+        const p = JSON.parse(raw) as {
+          workMin?: number;
+          breakMin?: number;
+          taskId?: string;
+        };
+        if (p.workMin && p.workMin > 0) {
+          setWorkMin(p.workMin);
+          setRemaining(p.workMin * 60);
+          setEditValue(String(p.workMin));
         }
+        if (p.breakMin && p.breakMin > 0) setBreakMin(p.breakMin);
         if (p.taskId) setTaskId(p.taskId);
       }
     } catch {
@@ -55,37 +67,56 @@ export default function TimerPage() {
   // Persist prefs.
   React.useEffect(() => {
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ durationMin, taskId }));
+      localStorage.setItem(
+        PREFS_KEY,
+        JSON.stringify({ workMin, breakMin, taskId })
+      );
     } catch {
       /* ignore */
     }
-  }, [durationMin, taskId]);
+  }, [workMin, breakMin, taskId]);
 
   const flushSegment = React.useCallback(
     (current: number) => {
-      if (taskId) {
+      // Only focus time counts toward a task.
+      if (taskId && phase === "focus") {
         const elapsed = segStartRef.current - current;
         if (elapsed > 0) addTime(taskId, elapsed);
       }
       segStartRef.current = current;
     },
-    [taskId, addTime]
+    [taskId, addTime, phase]
   );
 
-  // Countdown loop.
+  // Countdown loop — auto-cycles focus -> break -> focus …
   React.useEffect(() => {
     if (status !== "running") return;
     const id = setInterval(() => {
-      const secsLeft = Math.max(0, Math.round((endRef.current - Date.now()) / 1000));
-      setRemaining(secsLeft);
-      if (secsLeft <= 0) {
+      const secsLeft = Math.max(
+        0,
+        Math.round((endRef.current - Date.now()) / 1000)
+      );
+      if (secsLeft > 0) {
+        setRemaining(secsLeft);
+        return;
+      }
+      // Phase finished — switch and keep running.
+      if (phase === "focus") {
         flushSegment(0);
-        setStatus("idle");
-        setRemaining(durationMin * 60);
+        const next = breakMin * 60;
+        endRef.current = Date.now() + next * 1000;
+        setPhase("break");
+        setRemaining(next);
+      } else {
+        const next = workMin * 60;
+        segStartRef.current = next;
+        endRef.current = Date.now() + next * 1000;
+        setPhase("focus");
+        setRemaining(next);
       }
     }, 250);
     return () => clearInterval(id);
-  }, [status, durationMin, flushSegment]);
+  }, [status, phase, workMin, breakMin, flushSegment]);
 
   // Flush tracked time if the page unmounts mid-run.
   React.useEffect(() => {
@@ -97,7 +128,7 @@ export default function TimerPage() {
 
   const start = () => {
     endRef.current = Date.now() + remaining * 1000;
-    segStartRef.current = remaining;
+    if (phase === "focus") segStartRef.current = remaining;
     setStatus("running");
   };
 
@@ -109,41 +140,47 @@ export default function TimerPage() {
   const reset = () => {
     if (status === "running") flushSegment(remaining);
     setStatus("idle");
-    setRemaining(durationMin * 60);
+    setPhase("focus");
+    setRemaining(workMin * 60);
+    endRef.current = 0;
   };
 
-  const applyDuration = (min: number) => {
-    const clamped = Math.min(600, Math.max(1, Math.round(min)));
-    setDurationMin(clamped);
+  const applyWork = (min: number) => {
+    const clamped = Math.min(600, Math.max(1, Math.round(min || 0)));
+    setWorkMin(clamped);
     setEditValue(String(clamped));
-    setRemaining(clamped * 60);
-    setStatus("idle");
-    endRef.current = 0;
+    if (status === "idle" && phase === "focus") setRemaining(clamped * 60);
+  };
+
+  const applyBreak = (min: number) => {
+    const clamped = Math.min(120, Math.max(1, Math.round(min || 0)));
+    setBreakMin(clamped);
+    if (status === "idle" && phase === "break") setRemaining(clamped * 60);
   };
 
   const commitEdit = () => {
     const n = parseInt(editValue, 10);
-    if (!Number.isNaN(n)) applyDuration(n);
-    else setEditValue(String(durationMin));
+    if (!Number.isNaN(n)) {
+      if (phase === "break") applyBreak(n);
+      else applyWork(n);
+    } else {
+      setEditValue(String(phase === "break" ? breakMin : workMin));
+    }
     setEditing(false);
   };
 
   const running = status === "running";
+  const isBreak = phase === "break";
+  const phaseColor = isBreak ? BREAK_COLOR : FOCUS_COLOR;
   const selectedTask = tasks.find((t) => t.id === taskId) ?? null;
   const pendingTasks = tasks.filter((t) => !t.completed);
 
-  // Progress ring (0..1 elapsed within current duration).
-  const total = durationMin * 60;
-  const progress = total > 0 ? 1 - remaining / total : 0;
-
   return (
     <main className="relative flex min-h-screen w-full flex-col items-center overflow-hidden px-4 py-10">
-      {/* Lottie background — only while running, behind everything */}
       {running && (
         <LottieBackground className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center opacity-20 [&>svg]:h-full [&>svg]:max-h-[80vh] [&>svg]:w-auto" />
       )}
 
-      {/* Nav — hidden while running for a clean screen */}
       {!running && (
         <div className="z-10 mb-10">
           <AppNav />
@@ -151,7 +188,6 @@ export default function TimerPage() {
       )}
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-8">
-        {/* "Working on" task selector */}
         {!running && (
           <TaskSelector
             hydrated={hydrated}
@@ -161,13 +197,28 @@ export default function TimerPage() {
           />
         )}
 
-        {running && selectedTask && (
+        {running && selectedTask && !isBreak && (
           <p className="text-sm font-medium text-muted-foreground">
             {selectedTask.title}
           </p>
         )}
 
-        {/* Timer display (click to edit when not running) */}
+        {/* Phase label */}
+        {status !== "idle" && (
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold"
+            style={{ backgroundColor: `${phaseColor}22`, color: phaseColor }}
+          >
+            {isBreak ? (
+              <Coffee className="h-3.5 w-3.5" />
+            ) : (
+              <Target className="h-3.5 w-3.5" />
+            )}
+            {isBreak ? "Break" : "Focus"}
+          </span>
+        )}
+
+        {/* Timer display (tap to edit current phase when not running) */}
         {editing ? (
           <div className="flex items-center gap-3">
             <input
@@ -179,10 +230,7 @@ export default function TimerPage() {
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitEdit();
-                if (e.key === "Escape") {
-                  setEditValue(String(durationMin));
-                  setEditing(false);
-                }
+                if (e.key === "Escape") setEditing(false);
               }}
               onBlur={commitEdit}
               className="w-40 border-b-2 border-border bg-transparent text-center text-7xl font-bold tabular-nums outline-none focus:border-foreground"
@@ -195,38 +243,38 @@ export default function TimerPage() {
           <button
             onClick={() => {
               if (!running) {
-                setEditValue(String(durationMin));
+                setEditValue(String(isBreak ? breakMin : workMin));
                 setEditing(true);
               }
             }}
             disabled={running}
             className={cn(
               "text-8xl font-bold tabular-nums tracking-tight transition-colors",
-              !running && "hover:text-foreground/70",
-              running ? "cursor-default" : "cursor-text"
+              !running && "cursor-text hover:opacity-70",
+              running && "cursor-default"
             )}
           >
             {formatClock(remaining)}
           </button>
         )}
 
-        {/* Presets (idle only) */}
+        {/* Duration settings (idle only) */}
         {status === "idle" && !editing && (
-          <div className="flex flex-wrap justify-center gap-2">
-            {PRESETS.map((m) => (
-              <button
-                key={m}
-                onClick={() => applyDuration(m)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                  durationMin === m
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-                )}
-              >
-                {m}m
-              </button>
-            ))}
+          <div className="flex flex-col items-center gap-3">
+            <DurationRow
+              label="Focus"
+              color={FOCUS_COLOR}
+              presets={WORK_PRESETS}
+              value={workMin}
+              onChange={applyWork}
+            />
+            <DurationRow
+              label="Break"
+              color={BREAK_COLOR}
+              presets={BREAK_PRESETS}
+              value={breakMin}
+              onChange={applyBreak}
+            />
           </div>
         )}
 
@@ -238,12 +286,7 @@ export default function TimerPage() {
             </Button>
           )}
           {status === "running" && (
-            <Button
-              size="lg"
-              variant="secondary"
-              className="gap-2"
-              onClick={pause}
-            >
+            <Button size="lg" variant="secondary" className="gap-2" onClick={pause}>
               <Pause className="h-4 w-4" /> Pause
             </Button>
           )}
@@ -253,33 +296,70 @@ export default function TimerPage() {
             </Button>
           )}
           {status !== "idle" && (
-            <Button
-              size="lg"
-              variant="ghost"
-              className="gap-2"
-              onClick={reset}
-            >
+            <Button size="lg" variant="ghost" className="gap-2" onClick={reset}>
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
           )}
         </div>
 
-        {/* Progress + tracked time */}
-        {!running && (
-          <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-            {status === "paused" && <span>{Math.round(progress * 100)}% done</span>}
-            {selectedTask && taskTotalSeconds(selectedTask) > 0 && (
-              <span>
-                Tracked on this task:{" "}
-                <span className="font-medium text-foreground">
-                  {formatDuration(taskTotalSeconds(selectedTask))}
-                </span>
-              </span>
-            )}
-          </div>
+        {!running && selectedTask && taskTotalSeconds(selectedTask) > 0 && (
+          <p className="text-sm text-muted-foreground">
+            Tracked on this task:{" "}
+            <span className="font-medium text-foreground">
+              {formatDuration(taskTotalSeconds(selectedTask))}
+            </span>
+          </p>
         )}
       </div>
     </main>
+  );
+}
+
+function DurationRow({
+  label,
+  color,
+  presets,
+  value,
+  onChange,
+}: {
+  label: string;
+  color: string;
+  presets: number[];
+  value: number;
+  onChange: (min: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <span
+        className="w-14 text-right text-xs font-semibold"
+        style={{ color }}
+      >
+        {label}
+      </span>
+      {presets.map((m) => (
+        <button
+          key={m}
+          onClick={() => onChange(m)}
+          className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
+          style={
+            value === m
+              ? { backgroundColor: color, color: "#fff" }
+              : { backgroundColor: `${color}1f`, color }
+          }
+        >
+          {m}m
+        </button>
+      ))}
+      <input
+        type="number"
+        min={1}
+        max={600}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-8 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        aria-label={`${label} minutes`}
+      />
+    </div>
   );
 }
 

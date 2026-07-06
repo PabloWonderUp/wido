@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tasks",
+  "productName": "Wido",
   "version": "0.1.0",
   "identifier": "io.wonderup.tasks",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3002",
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../out"
   },
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Tasks",
+        "title": "Wido",
         "width": 480,
         "height": 780,
         "minWidth": 380,

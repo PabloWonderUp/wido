@@ -4,9 +4,9 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Tasks",
-    short_name: "Tasks",
-    description: "A minimal personal task tracker.",
+    name: "Wido",
+    short_name: "Wido",
+    description: "Wido — what you're working on.",
     start_url: "/",
     display: "standalone",
     background_color: "#111111",
