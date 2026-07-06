@@ -1,4 +1,4 @@
-import type { AppState, Client, Task } from "../types";
+import type { AppState, Client, Task, TimeEntry } from "../types";
 import type { StorageAdapter } from "./index";
 
 /**
@@ -34,19 +34,48 @@ interface TaskRow {
   order: number;
   createdAt: number;
   completedAt: number | null;
+  needsReply: number;
+  replyTo: string | null;
+  replyNote: string | null;
+  dueAt: number | null;
+  timeSpent: number;
+  timeEntries: string | null;
+}
+
+interface ClientRow {
+  id: string;
+  name: string;
+  color: string;
+  logo: string | null;
 }
 
 export const sqliteAdapter: StorageAdapter = {
   async load(): Promise<AppState> {
     const db = await getDb();
 
-    const clients = (await db.select(
-      "SELECT id, name, color FROM clients"
-    )) as Client[];
+    const clientRows = (await db.select(
+      "SELECT id, name, color, logo FROM clients"
+    )) as ClientRow[];
+    const clients: Client[] = clientRows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      color: c.color,
+      logo: c.logo ?? undefined,
+    }));
 
     const taskRows = (await db.select(
-      'SELECT id, title, details, client, completed, "order", createdAt, completedAt FROM tasks'
+      'SELECT id, title, details, client, completed, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries FROM tasks'
     )) as TaskRow[];
+
+    const parseEntries = (raw: string | null): TimeEntry[] | undefined => {
+      if (!raw) return undefined;
+      try {
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr : undefined;
+      } catch {
+        return undefined;
+      }
+    };
 
     const tasks: Task[] = taskRows.map((r) => ({
       id: r.id,
@@ -57,6 +86,12 @@ export const sqliteAdapter: StorageAdapter = {
       order: r.order,
       createdAt: r.createdAt,
       completedAt: r.completedAt ?? undefined,
+      needsReply: !!r.needsReply,
+      replyTo: r.replyTo ?? undefined,
+      replyNote: r.replyNote ?? undefined,
+      dueAt: r.dueAt ?? undefined,
+      timeSpent: r.timeSpent ?? 0,
+      timeEntries: parseEntries(r.timeEntries),
     }));
 
     return { tasks, clients };
@@ -73,14 +108,14 @@ export const sqliteAdapter: StorageAdapter = {
 
       for (const c of state.clients) {
         await db.execute(
-          "INSERT INTO clients (id, name, color) VALUES ($1, $2, $3)",
-          [c.id, c.name, c.color]
+          "INSERT INTO clients (id, name, color, logo) VALUES ($1, $2, $3, $4)",
+          [c.id, c.name, c.color, c.logo ?? null]
         );
       }
 
       for (const t of state.tasks) {
         await db.execute(
-          'INSERT INTO tasks (id, title, details, client, completed, "order", createdAt, completedAt) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          'INSERT INTO tasks (id, title, details, client, completed, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)',
           [
             t.id,
             t.title,
@@ -90,6 +125,12 @@ export const sqliteAdapter: StorageAdapter = {
             t.order,
             t.createdAt,
             t.completedAt ?? null,
+            t.needsReply ? 1 : 0,
+            t.replyTo ?? null,
+            t.replyNote ?? null,
+            t.dueAt ?? null,
+            t.timeSpent ?? 0,
+            t.timeEntries ? JSON.stringify(t.timeEntries) : null,
           ]
         );
       }

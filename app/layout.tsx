@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorker } from "@/components/service-worker";
+import { ClientManagerProvider } from "@/components/client-manager";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,7 +44,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <ClientManagerProvider>{children}</ClientManagerProvider>
           <ServiceWorker />
         </ThemeProvider>
       </body>

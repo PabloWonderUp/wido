@@ -1,7 +1,32 @@
 "use client";
 
 import { loadState, saveState } from "@/lib/storage";
+import { makeId } from "@/lib/utils";
 import type { AppState } from "@/lib/types";
+
+/** One-time: fold a legacy `timeSpent` aggregate into a time entry. */
+function migrate(state: AppState): AppState {
+  return {
+    ...state,
+    tasks: state.tasks.map((t) => {
+      if (t.timeSpent && t.timeSpent > 0 && !(t.timeEntries?.length)) {
+        return {
+          ...t,
+          timeSpent: undefined,
+          timeEntries: [
+            {
+              id: makeId(),
+              seconds: t.timeSpent,
+              label: "Tracked",
+              createdAt: t.createdAt,
+            },
+          ],
+        };
+      }
+      return t;
+    }),
+  };
+}
 
 /**
  * A tiny shared store so `useTasks` and `useClients` operate on the same
@@ -38,7 +63,7 @@ export async function hydrate() {
   if (hydrated || hydrating) return;
   hydrating = true;
   try {
-    state = await loadState();
+    state = migrate(await loadState());
   } finally {
     hydrated = true;
     hydrating = false;

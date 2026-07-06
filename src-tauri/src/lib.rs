@@ -10,7 +10,8 @@ pub fn run() {
             CREATE TABLE IF NOT EXISTS clients (
                 id    TEXT PRIMARY KEY,
                 name  TEXT NOT NULL,
-                color TEXT NOT NULL
+                color TEXT NOT NULL,
+                logo  TEXT
             );
             CREATE TABLE IF NOT EXISTS tasks (
                 id          TEXT PRIMARY KEY,
@@ -20,7 +21,13 @@ pub fn run() {
                 completed   INTEGER NOT NULL DEFAULT 0,
                 \"order\"   INTEGER NOT NULL DEFAULT 0,
                 createdAt   INTEGER NOT NULL,
-                completedAt INTEGER
+                completedAt INTEGER,
+                needsReply  INTEGER NOT NULL DEFAULT 0,
+                replyTo     TEXT,
+                replyNote   TEXT,
+                dueAt       INTEGER,
+                timeSpent   INTEGER NOT NULL DEFAULT 0,
+                timeEntries TEXT
             );
         ",
         kind: MigrationKind::Up,

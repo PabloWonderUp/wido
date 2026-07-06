@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Plus } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TaskInput } from "@/components/task-input";
 import { TaskList } from "@/components/task-list";
@@ -10,6 +11,8 @@ import { StatusFilter } from "@/components/status-filter";
 import { ClientFilter } from "@/components/client-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DataMenu } from "@/components/data-menu";
+import { AppNav } from "@/components/app-nav";
+import { ClientManagerButton } from "@/components/client-manager";
 import { useTasks } from "@/hooks/use-tasks";
 import { useClients } from "@/hooks/use-clients";
 import type { StatusFilter as StatusFilterValue } from "@/lib/types";
@@ -28,6 +31,7 @@ export default function Home() {
 
   const [status, setStatus] = React.useState<StatusFilterValue>("all");
   const [clientFilter, setClientFilter] = React.useState<string | null>(null);
+  const [onlyReply, setOnlyReply] = React.useState(false);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -57,6 +61,7 @@ export default function Home() {
     if (status === "pending" && t.completed) return false;
     if (status === "done" && !t.completed) return false;
     if (clientFilter && t.client !== clientFilter) return false;
+    if (onlyReply && !t.needsReply) return false;
     return true;
   });
 
@@ -65,21 +70,32 @@ export default function Home() {
   const doneTodayCount = tasks.filter(
     (t) => t.completed && t.completedAt && t.completedAt >= startOfToday
   ).length;
+  const toReplyCount = tasks.filter(
+    (t) => t.needsReply && !t.completed
+  ).length;
 
   const toggleExpand = (id: string) =>
     setExpandedId((cur) => (cur === id ? null : id));
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-4 py-10 sm:px-6">
+      <div className="mb-6">
+        <AppNav />
+      </div>
+
       {/* Header */}
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {pendingCount} pending · {doneTodayCount} done today
+            {toReplyCount > 0 && (
+              <> · {toReplyCount} to reply</>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <ClientManagerButton />
           <DataMenu />
           <ThemeToggle />
           <Button
@@ -101,7 +117,32 @@ export default function Home() {
 
       {/* Filters */}
       <div className="mt-5 space-y-3">
-        <StatusFilter value={status} onChange={setStatus} />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusFilter value={status} onChange={setStatus} />
+          <button
+            onClick={() => setOnlyReply((v) => !v)}
+            aria-pressed={onlyReply}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors",
+              onlyReply
+                ? "bg-amber-500 text-white"
+                : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            To reply
+            {toReplyCount > 0 && (
+              <span
+                className={cn(
+                  "ml-0.5 rounded-full px-1.5 text-xs",
+                  onlyReply ? "bg-white/25" : "bg-background/60"
+                )}
+              >
+                {toReplyCount}
+              </span>
+            )}
+          </button>
+        </div>
         <ClientFilter
           clients={clients}
           value={clientFilter}

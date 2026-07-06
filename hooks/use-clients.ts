@@ -27,12 +27,34 @@ export function useClients() {
     return client;
   };
 
+  const updateClient = (id: string, updates: Partial<Client>) => {
+    setState((prev) => ({
+      ...prev,
+      clients: prev.clients.map((c) =>
+        c.id === id ? { ...c, ...updates } : c
+      ),
+    }));
+  };
+
+  /** Delete a client and clear it from any task that referenced it. */
+  const deleteClient = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      clients: prev.clients.filter((c) => c.id !== id),
+      tasks: prev.tasks.map((t) =>
+        t.client === id ? { ...t, client: undefined } : t
+      ),
+    }));
+  };
+
   const getClient = (id?: string): Client | undefined =>
     id ? state.clients.find((c) => c.id === id) : undefined;
 
   return {
     clients: state.clients,
     addClient,
+    updateClient,
+    deleteClient,
     getClient,
   };
 }

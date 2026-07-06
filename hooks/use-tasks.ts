@@ -60,6 +60,74 @@ export function useTasks() {
     }));
   };
 
+  const pushEntry = (
+    id: string,
+    seconds: number,
+    label: string,
+    manual: boolean
+  ) => {
+    if (seconds <= 0) return;
+    const entry = {
+      id: makeId(),
+      seconds: Math.round(seconds),
+      label: label || undefined,
+      createdAt: Date.now(),
+      manual,
+    };
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? { ...t, timeEntries: [...(t.timeEntries ?? []), entry] }
+          : t
+      ),
+    }));
+  };
+
+  /** Add tracked focus seconds to a task (from the timer). */
+  const addTime = (id: string, seconds: number) =>
+    pushEntry(id, seconds, "Focus session", false);
+
+  /** Manually add a time block. */
+  const addManualTime = (id: string, seconds: number, label = "") =>
+    pushEntry(id, seconds, label, true);
+
+  const updateTimeEntry = (
+    id: string,
+    entryId: string,
+    updates: { seconds?: number; label?: string }
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              timeEntries: (t.timeEntries ?? []).map((e) =>
+                e.id === entryId ? { ...e, ...updates } : e
+              ),
+            }
+          : t
+      ),
+    }));
+  };
+
+  const deleteTimeEntry = (id: string, entryId: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              timeEntries: (t.timeEntries ?? []).filter(
+                (e) => e.id !== entryId
+              ),
+            }
+          : t
+      ),
+    }));
+  };
+
   const deleteTask = (id: string) => {
     setState((prev) => ({
       ...prev,
@@ -101,5 +169,9 @@ export function useTasks() {
     updateTask,
     deleteTask,
     reorderTasks,
+    addTime,
+    addManualTime,
+    updateTimeEntry,
+    deleteTimeEntry,
   };
 }

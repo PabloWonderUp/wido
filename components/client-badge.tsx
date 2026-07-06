@@ -22,6 +22,14 @@ export function ClientBadge({ client, className }: ClientBadgeProps) {
         color: client.color,
       }}
     >
+      {client.logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={client.logo}
+          alt=""
+          className="mr-1 -ml-0.5 h-3.5 w-3.5 rounded-full object-cover"
+        />
+      )}
       {client.name}
     </span>
   );
