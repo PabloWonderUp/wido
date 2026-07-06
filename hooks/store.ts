@@ -75,6 +75,14 @@ export async function hydrate() {
   }
 }
 
+/** Force a reload from the current adapter (e.g. after login/logout switches it). */
+export async function rehydrate() {
+  const next = migrate(await loadState());
+  state = next;
+  hydrated = true;
+  emit();
+}
+
 /** Replace state via an updater; update the UI immediately, persist async. */
 export function setState(updater: (prev: AppState) => AppState) {
   state = updater(state);

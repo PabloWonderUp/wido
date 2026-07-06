@@ -52,6 +52,7 @@ Two real routes, switched by `AppNav` (Tasks / Timer): `/` (task list) and `/tim
 - **Storage = adapter pattern** (`lib/storage/`): `StorageAdapter { load, save }`, chosen at runtime by `isTauri()`.
   - web/PWA → `localAdapter` (localStorage key `task-tracker-v1`)
   - desktop → `sqliteAdapter` (`tauri-plugin-sql`, file `tasks.db`; schema via Rust migrations in `src-tauri/src/lib.rs`)
+  - signed in (Supabase) → `supabaseAdapter` (one `app_state` jsonb row per user; wins over local/sqlite via `getActiveUser()`). Auth via `useAuth`/`lib/supabase.ts` (env-gated: `NEXT_PUBLIC_SUPABASE_URL`/`_ANON_KEY`). `components/auth-sync.tsx` switches backend on login/logout and seeds cloud from local on first login. Login optional; see memory `sync-path-supabase`.
   - **Data lives in different sandboxes per target.** The Backup menu (`data-menu.tsx`, DB icon in header) exports/imports JSON — the universal backup + the bridge between targets.
 - **Future sync → Supabase** across all devices (settled). It becomes one more adapter (`supabaseAdapter`) + magic-link auth; the JSON data model stays. See memory `sync-path-supabase`. Keep new work compatible with this.
 - **UI**: shadcn/ui-style primitives hand-authored in `components/ui/` (Radix under the hood). Tailwind v3 with HSL CSS-var tokens in globals.css. **Dark mode is default** (`next-themes`, class strategy). Client badges use inline styles from `client.color` (translucent tint + colored text).

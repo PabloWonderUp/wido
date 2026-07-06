@@ -1,6 +1,8 @@
 import type { AppState } from "../types";
 import { localAdapter } from "./local";
 import { sqliteAdapter } from "./sqlite";
+import { supabaseAdapter } from "./supabase";
+import { getActiveUser } from "./active-user";
 
 /**
  * Storage abstraction. The live app talks only to `loadState`/`saveState`;
@@ -23,6 +25,7 @@ export function isTauri(): boolean {
 }
 
 function getAdapter(): StorageAdapter {
+  if (getActiveUser()) return supabaseAdapter; // signed in -> cloud
   return isTauri() ? sqliteAdapter : localAdapter;
 }
 

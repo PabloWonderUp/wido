@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorker } from "@/components/service-worker";
 import { ClientManagerProvider } from "@/components/client-manager";
+import { AuthSync } from "@/components/auth-sync";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,6 +46,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ClientManagerProvider>{children}</ClientManagerProvider>
+          <AuthSync />
           <ServiceWorker />
         </ThemeProvider>
       </body>
