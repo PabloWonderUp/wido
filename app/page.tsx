@@ -204,12 +204,12 @@ export default function Home() {
       <div
         className={cn(
           listWithReplies &&
-            "xl:flex xl:items-start xl:justify-center xl:gap-6"
+            "md:flex md:items-start md:gap-4 lg:gap-6 xl:justify-center"
         )}
       >
         <div
           className={cn(
-            listWithReplies && "min-w-0 xl:max-w-2xl xl:flex-1"
+            listWithReplies && "min-w-0 md:flex-1 xl:max-w-2xl"
           )}
         >
       {/* Header */}
@@ -493,7 +493,7 @@ export default function Home() {
 
         {listWithReplies && (
           <ReplyPanel
-            className="mt-6 xl:mt-0 xl:w-72 xl:shrink-0 xl:sticky xl:top-10 xl:max-h-[calc(100vh-5rem)] xl:overflow-y-auto"
+            className="mt-6 md:mt-0 md:w-56 md:shrink-0 md:sticky md:top-10 md:max-h-[calc(100vh-5rem)] md:overflow-y-auto lg:w-64 xl:w-72"
             tasks={activeTasks}
             getClient={getClient}
             onUpdate={updateTask}
