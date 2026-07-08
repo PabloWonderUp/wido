@@ -4,6 +4,8 @@ import * as React from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -28,6 +30,9 @@ const dayToTs = (day: string) => new Date(`${day}T12:00:00`).getTime();
 /** Seconds -> a clean hours string, e.g. 5400 -> "1.5". */
 const secsToHoursStr = (s: number) => String(+(s / 3600).toFixed(2));
 
+const MASK = "•••";
+const HIDE_KEY = "wido-hide-amounts";
+
 export default function HoursPage() {
   const { tasks, hydrated } = useTasks();
   const { clients, addClientTime, updateClientTime, deleteClientTime } =
@@ -35,6 +40,27 @@ export default function HoursPage() {
 
   // Current month offset: 0 = this month, -1 = last month, …
   const [offset, setOffset] = React.useState(0);
+
+  // Hide money amounts (persisted) — for screen-sharing / privacy.
+  const [hideAmounts, setHideAmounts] = React.useState(false);
+  React.useEffect(() => {
+    try {
+      setHideAmounts(localStorage.getItem(HIDE_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggleHide = () =>
+    setHideAmounts((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(HIDE_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  const money = (v: number) => (hideAmounts ? `$${MASK}` : formatMoney(v));
 
   const base = new Date();
   const viewed = new Date(base.getFullYear(), base.getMonth() + offset, 1);
@@ -94,14 +120,28 @@ export default function HoursPage() {
               <>
                 {" · "}
                 <span className="font-medium text-foreground">
-                  {formatMoney(totalMoney)}
+                  {money(totalMoney)}
                 </span>
               </>
             )}
           </p>
         </div>
-        {/* Month selector */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleHide}
+            aria-label={hideAmounts ? "Show amounts" : "Hide amounts"}
+            aria-pressed={hideAmounts}
+            title={hideAmounts ? "Show amounts" : "Hide amounts"}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {hideAmounts ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+          {/* Month selector */}
+          <div className="flex items-center gap-1">
           <button
             onClick={() => setOffset((o) => o - 1)}
             aria-label="Previous month"
@@ -120,6 +160,7 @@ export default function HoursPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </button>
+          </div>
         </div>
       </header>
 
@@ -148,6 +189,7 @@ export default function HoursPage() {
               maxDay={maxDay}
               isCurrentMonth={isCurrentMonth}
               daysLeft={daysLeft}
+              hideAmounts={hideAmounts}
               onAddHours={(secs, note, createdAt) =>
                 addClientTime(row.client.id, secs, note, createdAt)
               }
@@ -179,6 +221,7 @@ function ClientHoursCard({
   maxDay,
   isCurrentMonth,
   daysLeft,
+  hideAmounts,
   onAddHours,
   onUpdateEntry,
   onDeleteEntry,
@@ -196,6 +239,7 @@ function ClientHoursCard({
   maxDay: string;
   isCurrentMonth: boolean;
   daysLeft: number;
+  hideAmounts: boolean;
   onAddHours: (seconds: number, note: string, createdAt: number) => void;
   onUpdateEntry: (
     entryId: string,
@@ -262,9 +306,9 @@ function ClientHoursCard({
           {rate > 0 && (
             <span className="text-xs text-muted-foreground">
               <span className="font-medium text-green-500">
-                {formatMoney(amount)}
+                {hideAmounts ? `$${MASK}` : formatMoney(amount)}
               </span>{" "}
-              @ ${rate}/h
+              @ ${hideAmounts ? MASK : rate}/h
             </span>
           )}
         </span>
