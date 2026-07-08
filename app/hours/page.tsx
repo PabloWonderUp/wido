@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  Clock,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -13,7 +12,6 @@ import {
   cn,
   clientMonthSeconds,
   entriesMonthSeconds,
-  formatDuration,
   formatHours,
   formatMoney,
 } from "@/lib/utils";
@@ -22,9 +20,17 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useClients } from "@/hooks/use-clients";
 import type { Client, TimeEntry } from "@/lib/types";
 
+const pad = (n: number) => String(n).padStart(2, "0");
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** yyyy-mm-dd (local) at noon -> timestamp; noon dodges timezone day-shifts. */
+const dayToTs = (day: string) => new Date(`${day}T12:00:00`).getTime();
+/** Seconds -> a clean hours string, e.g. 5400 -> "1.5". */
+const secsToHoursStr = (s: number) => String(+(s / 3600).toFixed(2));
+
 export default function HoursPage() {
   const { tasks, hydrated } = useTasks();
-  const { clients, updateClient, addClientTime, deleteClientTime } =
+  const { clients, addClientTime, updateClientTime, deleteClientTime } =
     useClients();
 
   // Current month offset: 0 = this month, -1 = last month, …
@@ -38,10 +44,8 @@ export default function HoursPage() {
     month: "long",
     year: "numeric",
   });
-  // Date range for the add-hours picker: constrained to the viewed month.
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const ymd = (d: Date) =>
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  // Date range for the pickers: constrained to the viewed month.
   const minDay = ymd(new Date(year, monthIndex, 1));
   const maxDay = ymd(new Date(year, monthIndex + 1, 0));
   const defaultDay = offset === 0 ? ymd(base) : minDay;
@@ -144,11 +148,11 @@ export default function HoursPage() {
               maxDay={maxDay}
               isCurrentMonth={isCurrentMonth}
               daysLeft={daysLeft}
-              onRateChange={(rate) =>
-                updateClient(row.client.id, { hourlyRate: rate })
-              }
               onAddHours={(secs, note, createdAt) =>
                 addClientTime(row.client.id, secs, note, createdAt)
+              }
+              onUpdateEntry={(entryId, updates) =>
+                updateClientTime(row.client.id, entryId, updates)
               }
               onDeleteEntry={(entryId) =>
                 deleteClientTime(row.client.id, entryId)
@@ -175,8 +179,8 @@ function ClientHoursCard({
   maxDay,
   isCurrentMonth,
   daysLeft,
-  onRateChange,
   onAddHours,
+  onUpdateEntry,
   onDeleteEntry,
 }: {
   client: Client;
@@ -192,34 +196,26 @@ function ClientHoursCard({
   maxDay: string;
   isCurrentMonth: boolean;
   daysLeft: number;
-  onRateChange: (rate: number | undefined) => void;
   onAddHours: (seconds: number, note: string, createdAt: number) => void;
+  onUpdateEntry: (
+    entryId: string,
+    updates: { seconds?: number; label?: string; createdAt?: number }
+  ) => void;
   onDeleteEntry: (entryId: string) => void;
 }) {
-  const [rateDraft, setRateDraft] = React.useState(rate ? String(rate) : "");
   const [hoursDraft, setHoursDraft] = React.useState("");
   const [noteDraft, setNoteDraft] = React.useState("");
   const [dayDraft, setDayDraft] = React.useState(defaultDay);
-
-  React.useEffect(() => {
-    setRateDraft(rate ? String(rate) : "");
-  }, [rate]);
 
   // Keep the day in step with the viewed month.
   React.useEffect(() => {
     setDayDraft(defaultDay);
   }, [defaultDay]);
 
-  const commitRate = () => {
-    const n = parseFloat(rateDraft.replace(",", "."));
-    onRateChange(!Number.isNaN(n) && n > 0 ? n : undefined);
-  };
-
   const addHours = () => {
     const h = parseFloat(hoursDraft.replace(",", "."));
     if (Number.isNaN(h) || h <= 0) return;
-    // Stamp at noon local time to dodge timezone day-shifts.
-    const createdAt = new Date(`${dayDraft || defaultDay}T12:00:00`).getTime();
+    const createdAt = dayToTs(dayDraft || defaultDay);
     onAddHours(
       Math.round(h * 3600),
       noteDraft,
@@ -264,8 +260,11 @@ function ClientHoursCard({
             )}
           </span>
           {rate > 0 && (
-            <span className="text-xs font-medium text-green-500">
-              {formatMoney(amount)}
+            <span className="text-xs text-muted-foreground">
+              <span className="font-medium text-green-500">
+                {formatMoney(amount)}
+              </span>{" "}
+              @ ${rate}/h
             </span>
           )}
         </span>
@@ -313,99 +312,143 @@ function ClientHoursCard({
         </p>
       )}
 
-      {/* Rate + add hours */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          Rate $
-          <input
-            type="number"
-            min={0}
-            step={1}
-            value={rateDraft}
-            onChange={(e) => setRateDraft(e.target.value)}
-            onBlur={commitRate}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            placeholder="—"
-            className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          /h
-        </label>
-
-        <div className="flex flex-1 items-center gap-1.5">
-          <input
-            type="date"
-            value={dayDraft}
-            min={minDay}
-            max={maxDay}
-            onChange={(e) => setDayDraft(e.target.value)}
-            aria-label="Day"
-            className="h-7 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:light] dark:[color-scheme:dark]"
-          />
-          <input
-            type="number"
-            min={0}
-            step={0.25}
-            inputMode="decimal"
-            value={hoursDraft}
-            onChange={(e) => setHoursDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addHours();
-            }}
-            placeholder="0"
-            className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          <span className="text-xs text-muted-foreground">h</span>
-          <input
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addHours();
-            }}
-            placeholder="Note (optional)"
-            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          <button
-            onClick={addHours}
-            disabled={!hoursDraft.trim()}
-            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-40"
-          >
-            <Plus className="h-3.5 w-3.5" /> Add
-          </button>
-        </div>
+      {/* Add hours */}
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+        <input
+          type="date"
+          value={dayDraft}
+          min={minDay}
+          max={maxDay}
+          onChange={(e) => setDayDraft(e.target.value)}
+          aria-label="Day"
+          className="h-7 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:light] dark:[color-scheme:dark]"
+        />
+        <input
+          type="number"
+          min={0}
+          step={0.25}
+          inputMode="decimal"
+          value={hoursDraft}
+          onChange={(e) => setHoursDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") addHours();
+          }}
+          placeholder="0"
+          className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <span className="text-xs text-muted-foreground">h</span>
+        <input
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") addHours();
+          }}
+          placeholder="Note (optional)"
+          className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <button
+          onClick={addHours}
+          disabled={!hoursDraft.trim()}
+          className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
       </div>
 
-      {/* Hours logged directly this month */}
+      {/* Hours logged directly this month — editable */}
       {directEntries.length > 0 && (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1.5">
           {directEntries.map((e) => (
-            <li
+            <DirectEntryRow
               key={e.id}
-              className="group flex items-center gap-2 text-xs text-muted-foreground"
-            >
-              <Clock className="h-3 w-3 shrink-0" />
-              <span className="font-medium tabular-nums text-foreground">
-                {formatDuration(e.seconds)}
-              </span>
-              {e.label && <span className="truncate">· {e.label}</span>}
-              <span className="ml-auto shrink-0">
-                {new Date(e.createdAt).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-              <button
-                onClick={() => onDeleteEntry(e.id)}
-                aria-label="Delete hours"
-                className="rounded p-0.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </li>
+              entry={e}
+              minDay={minDay}
+              maxDay={maxDay}
+              onUpdate={(u) => onUpdateEntry(e.id, u)}
+              onDelete={() => onDeleteEntry(e.id)}
+            />
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function DirectEntryRow({
+  entry,
+  minDay,
+  maxDay,
+  onUpdate,
+  onDelete,
+}: {
+  entry: TimeEntry;
+  minDay: string;
+  maxDay: string;
+  onUpdate: (updates: {
+    seconds?: number;
+    label?: string;
+    createdAt?: number;
+  }) => void;
+  onDelete: () => void;
+}) {
+  const [hoursDraft, setHoursDraft] = React.useState(
+    secsToHoursStr(entry.seconds)
+  );
+  const [noteDraft, setNoteDraft] = React.useState(entry.label ?? "");
+
+  React.useEffect(() => {
+    setHoursDraft(secsToHoursStr(entry.seconds));
+  }, [entry.seconds]);
+
+  const commitHours = () => {
+    const h = parseFloat(hoursDraft.replace(",", "."));
+    if (!Number.isNaN(h) && h > 0) onUpdate({ seconds: Math.round(h * 3600) });
+    else setHoursDraft(secsToHoursStr(entry.seconds));
+  };
+
+  return (
+    <li className="group flex items-center gap-1.5">
+      <input
+        type="date"
+        value={ymd(new Date(entry.createdAt))}
+        min={minDay}
+        max={maxDay}
+        onChange={(ev) => {
+          if (ev.target.value) onUpdate({ createdAt: dayToTs(ev.target.value) });
+        }}
+        aria-label="Day"
+        className="h-7 rounded-md border border-input bg-transparent px-2 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:light] dark:[color-scheme:dark]"
+      />
+      <input
+        value={hoursDraft}
+        inputMode="decimal"
+        onChange={(ev) =>
+          setHoursDraft(ev.target.value.replace(/[^0-9.,]/g, ""))
+        }
+        onBlur={commitHours}
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
+        }}
+        className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-xs tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      />
+      <span className="text-xs text-muted-foreground">h</span>
+      <input
+        value={noteDraft}
+        onChange={(ev) => setNoteDraft(ev.target.value)}
+        onBlur={() => onUpdate({ label: noteDraft.trim() || undefined })}
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter") (ev.target as HTMLInputElement).blur();
+        }}
+        placeholder="Note (optional)"
+        className="h-7 min-w-0 flex-1 rounded-md bg-transparent px-2 text-xs outline-none focus-visible:bg-accent"
+      />
+      <button
+        onClick={onDelete}
+        aria-label="Delete hours"
+        className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </li>
   );
 }

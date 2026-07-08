@@ -75,6 +75,26 @@ export function useClients() {
     }));
   };
 
+  const updateClientTime = (
+    id: string,
+    entryId: string,
+    updates: { seconds?: number; label?: string; createdAt?: number }
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      clients: prev.clients.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              timeEntries: (c.timeEntries ?? []).map((e) =>
+                e.id === entryId ? { ...e, ...updates } : e
+              ),
+            }
+          : c
+      ),
+    }));
+  };
+
   const deleteClientTime = (id: string, entryId: string) => {
     setState((prev) => ({
       ...prev,
@@ -98,6 +118,7 @@ export function useClients() {
     deleteClient,
     getClient,
     addClientTime,
+    updateClientTime,
     deleteClientTime,
   };
 }
