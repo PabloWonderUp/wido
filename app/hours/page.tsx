@@ -38,9 +38,19 @@ export default function HoursPage() {
     month: "long",
     year: "numeric",
   });
-  // Timestamp to stamp newly logged hours with (keeps them in the viewed month).
-  const logTs =
-    offset === 0 ? Date.now() : new Date(year, monthIndex, 1).getTime();
+  // Date range for the add-hours picker: constrained to the viewed month.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const minDay = ymd(new Date(year, monthIndex, 1));
+  const maxDay = ymd(new Date(year, monthIndex + 1, 0));
+  const defaultDay = offset === 0 ? ymd(base) : minDay;
+
+  // Pacing helper only makes sense for the current, still-running month.
+  const isCurrentMonth = offset === 0;
+  const daysLeft = isCurrentMonth
+    ? new Date(year, monthIndex + 1, 0).getDate() - base.getDate() + 1
+    : 0;
 
   const freelanceClients = clients.filter((c) => c.hourTracking);
 
@@ -129,11 +139,16 @@ export default function HoursPage() {
             <ClientHoursCard
               key={row.client.id}
               {...row}
+              defaultDay={defaultDay}
+              minDay={minDay}
+              maxDay={maxDay}
+              isCurrentMonth={isCurrentMonth}
+              daysLeft={daysLeft}
               onRateChange={(rate) =>
                 updateClient(row.client.id, { hourlyRate: rate })
               }
-              onAddHours={(secs, note) =>
-                addClientTime(row.client.id, secs, note, logTs)
+              onAddHours={(secs, note, createdAt) =>
+                addClientTime(row.client.id, secs, note, createdAt)
               }
               onDeleteEntry={(entryId) =>
                 deleteClientTime(row.client.id, entryId)
@@ -155,6 +170,11 @@ function ClientHoursCard({
   pct,
   rate,
   amount,
+  defaultDay,
+  minDay,
+  maxDay,
+  isCurrentMonth,
+  daysLeft,
   onRateChange,
   onAddHours,
   onDeleteEntry,
@@ -167,17 +187,28 @@ function ClientHoursCard({
   pct: number;
   rate: number;
   amount: number;
+  defaultDay: string;
+  minDay: string;
+  maxDay: string;
+  isCurrentMonth: boolean;
+  daysLeft: number;
   onRateChange: (rate: number | undefined) => void;
-  onAddHours: (seconds: number, note: string) => void;
+  onAddHours: (seconds: number, note: string, createdAt: number) => void;
   onDeleteEntry: (entryId: string) => void;
 }) {
   const [rateDraft, setRateDraft] = React.useState(rate ? String(rate) : "");
   const [hoursDraft, setHoursDraft] = React.useState("");
   const [noteDraft, setNoteDraft] = React.useState("");
+  const [dayDraft, setDayDraft] = React.useState(defaultDay);
 
   React.useEffect(() => {
     setRateDraft(rate ? String(rate) : "");
   }, [rate]);
+
+  // Keep the day in step with the viewed month.
+  React.useEffect(() => {
+    setDayDraft(defaultDay);
+  }, [defaultDay]);
 
   const commitRate = () => {
     const n = parseFloat(rateDraft.replace(",", "."));
@@ -187,10 +218,24 @@ function ClientHoursCard({
   const addHours = () => {
     const h = parseFloat(hoursDraft.replace(",", "."));
     if (Number.isNaN(h) || h <= 0) return;
-    onAddHours(Math.round(h * 3600), noteDraft);
+    // Stamp at noon local time to dodge timezone day-shifts.
+    const createdAt = new Date(`${dayDraft || defaultDay}T12:00:00`).getTime();
+    onAddHours(
+      Math.round(h * 3600),
+      noteDraft,
+      Number.isNaN(createdAt) ? Date.now() : createdAt
+    );
     setHoursDraft("");
     setNoteDraft("");
+    setDayDraft(defaultDay);
   };
+
+  // Pace needed to still hit the monthly goal, given what's left.
+  const remaining = Math.max(0, target - hours);
+  const weeksLeft = Math.max(1, Math.ceil(daysLeft / 7));
+  const perDay = daysLeft > 0 ? remaining / daysLeft : 0;
+  const perWeek = remaining / weeksLeft;
+  const showPace = target > 0 && isCurrentMonth && hours < target && daysLeft > 0;
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
@@ -251,6 +296,23 @@ function ClientHoursCard({
         </div>
       )}
 
+      {showPace && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+          <span>To hit the goal:</span>
+          <span className="font-medium text-foreground">
+            {perDay.toFixed(1)}h/day
+          </span>
+          <span>·</span>
+          <span className="font-medium text-foreground">
+            {perWeek.toFixed(1)}h/week
+          </span>
+          <span>
+            ({remaining.toFixed(1)}h left over {daysLeft}{" "}
+            {daysLeft === 1 ? "day" : "days"})
+          </span>
+        </p>
+      )}
+
       {/* Rate + add hours */}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -273,6 +335,15 @@ function ClientHoursCard({
 
         <div className="flex flex-1 items-center gap-1.5">
           <input
+            type="date"
+            value={dayDraft}
+            min={minDay}
+            max={maxDay}
+            onChange={(e) => setDayDraft(e.target.value)}
+            aria-label="Day"
+            className="h-7 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring [color-scheme:light] dark:[color-scheme:dark]"
+          />
+          <input
             type="number"
             min={0}
             step={0.25}
@@ -283,7 +354,7 @@ function ClientHoursCard({
               if (e.key === "Enter") addHours();
             }}
             placeholder="0"
-            className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
           <span className="text-xs text-muted-foreground">h</span>
           <input
