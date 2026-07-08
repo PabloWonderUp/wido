@@ -4,13 +4,18 @@ import * as React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Archive,
+  ArchiveRestore,
   CalendarClock,
+  Check,
   ChevronDown,
   Clock,
   FolderKanban,
   GripVertical,
   MessageSquare,
+  Star,
   Trash2,
+  X,
 } from "lucide-react";
 
 import {
@@ -34,6 +39,9 @@ interface TaskItemProps {
   onToggle: () => void;
   onUpdate: (updates: Partial<Task>) => void;
   onDelete: () => void;
+  onArchive: () => void;
+  onTogglePriority: () => void;
+  priorityFull?: boolean;
   dndDisabled?: boolean;
 }
 
@@ -44,6 +52,9 @@ export function TaskItem({
   onToggle,
   onUpdate,
   onDelete,
+  onArchive,
+  onTogglePriority,
+  priorityFull,
   dndDisabled,
 }: TaskItemProps) {
   const { getClient } = useClients();
@@ -51,6 +62,7 @@ export function TaskItem({
 
   const [editingTitle, setEditingTitle] = React.useState(false);
   const [titleDraft, setTitleDraft] = React.useState(task.title);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const {
     attributes,
@@ -79,9 +91,10 @@ export function TaskItem({
   return (
     <div
       ref={setNodeRef}
+      id={`task-${task.id}`}
       style={style}
       className={cn(
-        "group rounded-xl border border-border bg-card px-3 py-3 shadow-sm transition-colors",
+        "group scroll-mt-24 rounded-xl border border-border bg-card px-3 py-3 shadow-sm transition-colors",
         isDragging && "z-10 opacity-80 shadow-md",
         expanded && "ring-1 ring-border"
       )}
@@ -214,6 +227,39 @@ export function TaskItem({
           )}
         </div>
 
+        {/* Priority pin — into the daily Top 5 */}
+        {(() => {
+          const pinned = task.priorityRank != null;
+          const disabled = !pinned && priorityFull;
+          return (
+            <button
+              onClick={onTogglePriority}
+              disabled={disabled}
+              aria-pressed={pinned}
+              title={
+                pinned
+                  ? "Remove from Top 5"
+                  : disabled
+                  ? "Top 5 is full"
+                  : "Add to Top 5"
+              }
+              className={cn(
+                "rounded p-1 transition-colors focus-visible:opacity-100",
+                pinned
+                  ? "text-amber-500 opacity-100 hover:text-amber-400"
+                  : disabled
+                  ? "cursor-not-allowed text-muted-foreground/40 opacity-0 group-hover:opacity-100"
+                  : "text-muted-foreground opacity-0 hover:text-amber-500 group-hover:opacity-100"
+              )}
+            >
+              <Star
+                className="h-4 w-4"
+                fill={pinned ? "currentColor" : "none"}
+              />
+            </button>
+          );
+        })()}
+
         {/* "Owe a message/reply" flag — always visible when set, hover-reveal otherwise */}
         <button
           onClick={() => onUpdate({ needsReply: !task.needsReply })}
@@ -232,14 +278,48 @@ export function TaskItem({
           <MessageSquare className="h-4 w-4" />
         </button>
 
-        {/* Delete (appears on hover) */}
+        {/* Archive / unarchive (appears on hover) */}
         <button
-          onClick={onDelete}
-          aria-label="Delete task"
-          className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          onClick={onArchive}
+          aria-label={task.archived ? "Unarchive task" : "Archive task"}
+          title={task.archived ? "Unarchive" : "Archive"}
+          className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
         >
-          <Trash2 className="h-4 w-4" />
+          {task.archived ? (
+            <ArchiveRestore className="h-4 w-4" />
+          ) : (
+            <Archive className="h-4 w-4" />
+          )}
         </button>
+
+        {/* Delete — two-step confirm */}
+        {confirmDelete ? (
+          <div className="flex shrink-0 items-center gap-0.5">
+            <span className="mr-0.5 text-xs text-muted-foreground">Delete?</span>
+            <button
+              onClick={onDelete}
+              aria-label="Confirm delete"
+              className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              aria-label="Cancel delete"
+              className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            aria-label="Delete task"
+            className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Expand chevron */}
         <button

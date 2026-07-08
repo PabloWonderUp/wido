@@ -1,6 +1,7 @@
 import type {
   AppState,
   Client,
+  Note,
   SubTask,
   Task,
   TaskStatus,
@@ -45,11 +46,24 @@ interface TaskRow {
   needsReply: number;
   replyTo: string | null;
   replyNote: string | null;
+  replyDueAt: number | null;
+  replySetAt: number | null;
   dueAt: number | null;
   timeSpent: number;
   timeEntries: string | null;
   isProject: number;
   subtasks: string | null;
+  archived: number;
+  priorityRank: number | null;
+}
+
+interface NoteRow {
+  id: string;
+  title: string | null;
+  content: string;
+  taskId: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 interface ClientRow {
@@ -80,7 +94,7 @@ export const sqliteAdapter: StorageAdapter = {
     }));
 
     const taskRows = (await db.select(
-      'SELECT id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries, isProject, subtasks FROM tasks'
+      'SELECT id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, replyDueAt, replySetAt, dueAt, timeSpent, timeEntries, isProject, subtasks, archived, priorityRank FROM tasks'
     )) as TaskRow[];
 
     const parseJson = <T,>(raw: string | null): T[] | undefined => {
@@ -106,14 +120,30 @@ export const sqliteAdapter: StorageAdapter = {
       needsReply: !!r.needsReply,
       replyTo: r.replyTo ?? undefined,
       replyNote: r.replyNote ?? undefined,
+      replyDueAt: r.replyDueAt ?? undefined,
+      replySetAt: r.replySetAt ?? undefined,
       dueAt: r.dueAt ?? undefined,
       timeSpent: r.timeSpent ?? 0,
       timeEntries: parseJson<TimeEntry>(r.timeEntries),
       isProject: !!r.isProject,
       subtasks: parseJson<SubTask>(r.subtasks),
+      archived: !!r.archived,
+      priorityRank: r.priorityRank ?? undefined,
     }));
 
-    return { tasks, clients };
+    const noteRows = (await db.select(
+      "SELECT id, title, content, taskId, createdAt, updatedAt FROM notes"
+    )) as NoteRow[];
+    const notes: Note[] = noteRows.map((n) => ({
+      id: n.id,
+      title: n.title ?? undefined,
+      content: n.content ?? "",
+      taskId: n.taskId ?? undefined,
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    }));
+
+    return { tasks, clients, notes };
   },
 
   async save(state: AppState): Promise<void> {
@@ -124,6 +154,7 @@ export const sqliteAdapter: StorageAdapter = {
     try {
       await db.execute("DELETE FROM tasks");
       await db.execute("DELETE FROM clients");
+      await db.execute("DELETE FROM notes");
 
       for (const c of state.clients) {
         await db.execute(
@@ -142,7 +173,7 @@ export const sqliteAdapter: StorageAdapter = {
 
       for (const t of state.tasks) {
         await db.execute(
-          'INSERT INTO tasks (id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, dueAt, timeSpent, timeEntries, isProject, subtasks) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)',
+          'INSERT INTO tasks (id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, replyDueAt, replySetAt, dueAt, timeSpent, timeEntries, isProject, subtasks, archived, priorityRank) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)',
           [
             t.id,
             t.title,
@@ -156,11 +187,29 @@ export const sqliteAdapter: StorageAdapter = {
             t.needsReply ? 1 : 0,
             t.replyTo ?? null,
             t.replyNote ?? null,
+            t.replyDueAt ?? null,
+            t.replySetAt ?? null,
             t.dueAt ?? null,
             t.timeSpent ?? 0,
             t.timeEntries ? JSON.stringify(t.timeEntries) : null,
             t.isProject ? 1 : 0,
             t.subtasks ? JSON.stringify(t.subtasks) : null,
+            t.archived ? 1 : 0,
+            t.priorityRank ?? null,
+          ]
+        );
+      }
+
+      for (const n of state.notes) {
+        await db.execute(
+          "INSERT INTO notes (id, title, content, taskId, createdAt, updatedAt) VALUES ($1, $2, $3, $4, $5, $6)",
+          [
+            n.id,
+            n.title ?? null,
+            n.content ?? "",
+            n.taskId ?? null,
+            n.createdAt,
+            n.updatedAt,
           ]
         );
       }

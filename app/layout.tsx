@@ -5,6 +5,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ServiceWorker } from "@/components/service-worker";
 import { ClientManagerProvider } from "@/components/client-manager";
+import { NoteDialogProvider } from "@/components/note-dialog";
 import { AuthSync } from "@/components/auth-sync";
 import { AuthGate } from "@/components/auth-gate";
 import { OfflineProvider } from "@/components/offline-provider";
@@ -49,7 +50,9 @@ export default function RootLayout({
         >
           <OfflineProvider>
             <ClientManagerProvider>
-              <AuthGate>{children}</AuthGate>
+              <NoteDialogProvider>
+                <AuthGate>{children}</AuthGate>
+              </NoteDialogProvider>
             </ClientManagerProvider>
           </OfflineProvider>
           <AuthSync />

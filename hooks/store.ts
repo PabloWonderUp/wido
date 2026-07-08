@@ -38,7 +38,7 @@ function migrate(state: AppState): AppState {
  * (localStorage on web, SQLite on desktop). Kept dependency-free on purpose.
  */
 
-let state: AppState = { tasks: [], clients: [] };
+let state: AppState = { tasks: [], clients: [], notes: [] };
 let hydrated = false;
 let hydrating = false;
 const listeners = new Set<() => void>();

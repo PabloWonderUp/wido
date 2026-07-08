@@ -27,11 +27,24 @@ export interface Task {
   needsReply?: boolean; // flag: I owe someone a message / a reply
   replyTo?: string; // who I need to message/reply
   replyNote?: string; // what I need to say / context
+  replyDueAt?: number; // optional deadline to reply (timestamp) — drives green→yellow→red
+  replySetAt?: number; // when the reply deadline was set — needed to compute progress
   dueAt?: number; // optional due date + time (timestamp)
   timeSpent?: number; // legacy aggregate; migrated into timeEntries on load
   timeEntries?: TimeEntry[]; // logged time blocks (timer + manual)
   isProject?: boolean; // marked as a project (holds subtasks)
   subtasks?: SubTask[]; // checklist inside a project task
+  archived?: boolean; // hidden from the main views; kept for reference
+  priorityRank?: number; // 1..5 slot in the daily "Top 5" focus list
+}
+
+export interface Note {
+  id: string;
+  title?: string;
+  content: string; // rich text as HTML (from the editor)
+  taskId?: string; // linked task; if absent it's a personal note
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Client {
@@ -47,6 +60,7 @@ export interface Client {
 export interface AppState {
   tasks: Task[];
   clients: Client[];
+  notes: Note[];
 }
 
 export type StatusFilter = "all" | TaskStatus;

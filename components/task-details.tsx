@@ -7,6 +7,7 @@ import {
   Clock,
   FolderKanban,
   MessageSquare,
+  NotebookPen,
   Plus,
   Settings2,
   Tag,
@@ -32,7 +33,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useClients } from "@/hooks/use-clients";
 import { useTasks } from "@/hooks/use-tasks";
+import { useNotes } from "@/hooks/use-notes";
 import { useClientManager } from "@/components/client-manager";
+import { useNoteDialog } from "@/components/note-dialog";
 import { STATUSES, STATUS_META, statusOf } from "@/lib/status";
 import type { Task, TimeEntry } from "@/lib/types";
 
@@ -80,6 +83,9 @@ export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
   } = useTasks();
   const [newSubtask, setNewSubtask] = React.useState("");
   const { open: openClientManager } = useClientManager();
+  const { open: openNote } = useNoteDialog();
+  const { notesForTask } = useNotes();
+  const linkedNotes = notesForTask(task.id);
   const [title, setTitle] = React.useState(task.title);
   const [details, setDetails] = React.useState(task.details ?? "");
   const [editing, setEditing] = React.useState(!task.details);
@@ -373,6 +379,48 @@ export function TaskDetails({ task, onUpdate, onClose }: TaskDetailsProps) {
           />
         </div>
       )}
+
+      {/* Notes */}
+      <div className="space-y-2 rounded-lg border border-border p-3">
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <NotebookPen className="h-3.5 w-3.5" /> Notes
+          </span>
+          <button
+            onClick={() => openNote({ taskId: task.id })}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add note
+          </button>
+        </div>
+        {linkedNotes.length > 0 && (
+          <div className="space-y-1.5">
+            {linkedNotes.map((n) => {
+              const snippet = n.content
+                .replace(/<img[^>]*>/gi, " ")
+                .replace(/<[^>]*>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim();
+              return (
+                <button
+                  key={n.id}
+                  onClick={() => openNote({ noteId: n.id })}
+                  className="flex w-full flex-col rounded-md border border-border bg-background/40 px-2.5 py-2 text-left transition-colors hover:border-foreground/20"
+                >
+                  <span className="truncate text-sm font-medium">
+                    {n.title?.trim() || "Untitled note"}
+                  </span>
+                  {snippet && (
+                    <span className="line-clamp-2 text-xs text-muted-foreground">
+                      {snippet}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Time tracking */}
       <div className="space-y-2 rounded-lg border border-border p-3">

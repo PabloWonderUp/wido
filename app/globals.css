@@ -59,3 +59,71 @@
     text-rendering: optimizeLegibility;
   }
 }
+
+/* Rich-text note editor (TipTap) — minimal prose styling. */
+.note-content {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+}
+.note-content:focus {
+  outline: none;
+}
+.note-content > * + * {
+  margin-top: 0.6em;
+}
+.note-content h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.note-content h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.note-content ul,
+.note-content ol {
+  padding-left: 1.35rem;
+}
+.note-content ul {
+  list-style: disc;
+}
+.note-content ol {
+  list-style: decimal;
+}
+.note-content li > p {
+  margin: 0;
+}
+.note-content a {
+  color: hsl(var(--ring));
+  text-decoration: underline;
+}
+.note-content blockquote {
+  border-left: 3px solid hsl(var(--border));
+  padding-left: 0.85rem;
+  color: hsl(var(--muted-foreground));
+}
+.note-content code {
+  background: hsl(var(--muted));
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+.note-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.4rem 0;
+}
+.note-content img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--ring));
+}
+/* Placeholder for the empty editor */
+.note-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

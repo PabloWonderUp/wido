@@ -74,6 +74,41 @@ export function dueUrgency(
   return "later";
 }
 
+export type ReplyUrgency = "ok" | "warning" | "overdue";
+
+/** Colors for the reply-deadline state: green → amber → red. */
+export const REPLY_URGENCY_COLOR: Record<ReplyUrgency, string> = {
+  ok: "#22C55E",
+  warning: "#F59E0B",
+  overdue: "#EF4444",
+};
+
+/**
+ * Progress toward a reply deadline, based on the fraction of the window elapsed:
+ * green for the first half, amber past the halfway point, red once overdue.
+ */
+export function replyUrgency(
+  setAt: number,
+  dueAt: number,
+  now = Date.now()
+): ReplyUrgency {
+  if (now >= dueAt) return "overdue";
+  const total = dueAt - setAt;
+  if (total <= 0) return "overdue";
+  return (now - setAt) / total < 0.5 ? "ok" : "warning";
+}
+
+/** Human remaining-time label for a reply deadline, e.g. "1h 20m left", "overdue 30m". */
+export function formatReplyRemaining(dueAt: number, now = Date.now()): string {
+  const diff = dueAt - now;
+  const abs = Math.abs(diff);
+  if (abs < 60_000) return diff >= 0 ? "<1m left" : "just overdue";
+  const h = Math.floor(abs / 3_600_000);
+  const m = Math.floor((abs % 3_600_000) / 60_000);
+  const label = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  return diff >= 0 ? `${label} left` : `overdue ${label}`;
+}
+
 /** Seconds -> "MM:SS" for the running timer. */
 export function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -150,6 +185,29 @@ export async function fileToLogoDataUrl(
   ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
   bitmap.close?.();
   return canvas.toDataURL("image/png");
+}
+
+/**
+ * Read an image File and return a downscaled JPEG data URL (aspect preserved,
+ * longest side capped). Keeps note images small enough for localStorage.
+ */
+export async function fileToImageDataUrl(
+  file: File,
+  maxSide = 1280,
+  quality = 0.82
+): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
 /** Generate a reasonably unique id without extra deps. */

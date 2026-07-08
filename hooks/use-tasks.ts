@@ -213,6 +213,64 @@ export function useTasks() {
     }));
   };
 
+  /** Archive / unarchive: hides from the main views but keeps the task. */
+  const toggleArchived = (id: string) => {
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        t.id === id ? { ...t, archived: !t.archived } : t
+      ),
+    }));
+  };
+
+  const MAX_PRIORITIES = 5;
+
+  /** Pin/unpin a task into the daily Top-5 (no-op when full). */
+  const togglePriority = (id: string) => {
+    setState((prev) => {
+      const task = prev.tasks.find((t) => t.id === id);
+      if (!task) return prev;
+
+      if (task.priorityRank != null) {
+        // Unpin, then renumber the remaining priorities to stay contiguous.
+        const remaining = prev.tasks
+          .filter((t) => t.id !== id && t.priorityRank != null)
+          .sort((a, b) => a.priorityRank! - b.priorityRank!);
+        const rankById = new Map(remaining.map((t, i) => [t.id, i + 1]));
+        return {
+          ...prev,
+          tasks: prev.tasks.map((t) =>
+            t.id === id
+              ? { ...t, priorityRank: undefined }
+              : rankById.has(t.id)
+              ? { ...t, priorityRank: rankById.get(t.id) }
+              : t
+          ),
+        };
+      }
+
+      const count = prev.tasks.filter((t) => t.priorityRank != null).length;
+      if (count >= MAX_PRIORITIES) return prev; // full — ignore
+      return {
+        ...prev,
+        tasks: prev.tasks.map((t) =>
+          t.id === id ? { ...t, priorityRank: count + 1 } : t
+        ),
+      };
+    });
+  };
+
+  /** Reorder the Top-5 from drag & drop (ids in the new order). */
+  const reorderPriorities = (orderedIds: string[]) => {
+    const rankById = new Map(orderedIds.map((id, i) => [id, i + 1]));
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) =>
+        rankById.has(t.id) ? { ...t, priorityRank: rankById.get(t.id) } : t
+      ),
+    }));
+  };
+
   /**
    * Reorder from drag & drop. Receives the newly ordered ids of the *visible*
    * tasks; hidden tasks (filtered out) keep their slots so filtering never
@@ -239,14 +297,21 @@ export function useTasks() {
 
   const sortedTasks = [...state.tasks].sort((a, b) => a.order - b.order);
 
+  const getTask = (id?: string) =>
+    id ? state.tasks.find((t) => t.id === id) : undefined;
+
   return {
     tasks: sortedTasks,
+    getTask,
     hydrated,
     addTask,
     toggleTask,
     setStatus,
     updateTask,
     deleteTask,
+    toggleArchived,
+    togglePriority,
+    reorderPriorities,
     reorderTasks,
     addTime,
     addManualTime,

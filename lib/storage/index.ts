@@ -43,6 +43,7 @@ export function coerceState(input: unknown): AppState {
   return {
     tasks: Array.isArray(obj.tasks) ? obj.tasks : [],
     clients: Array.isArray(obj.clients) ? obj.clients : [],
+    notes: Array.isArray(obj.notes) ? obj.notes : [],
   };
 }
 

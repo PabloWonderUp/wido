@@ -8,7 +8,7 @@ import { getActiveUser } from "./active-user";
  * JSON (see supabase/schema.sql). Row-Level Security keeps it private.
  * Used only while signed in; falls back to empty if unavailable.
  */
-const EMPTY: AppState = { tasks: [], clients: [] };
+const EMPTY: AppState = { tasks: [], clients: [], notes: [] };
 
 export const supabaseAdapter: StorageAdapter = {
   async load(): Promise<AppState> {

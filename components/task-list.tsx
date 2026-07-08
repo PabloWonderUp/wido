@@ -27,6 +27,9 @@ interface TaskListProps {
   onToggle: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Task>) => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  onTogglePriority: (id: string) => void;
+  priorityFull?: boolean;
   onReorder: (orderedIds: string[]) => void;
   dndDisabled?: boolean;
 }
@@ -38,6 +41,9 @@ export function TaskList({
   onToggle,
   onUpdate,
   onDelete,
+  onArchive,
+  onTogglePriority,
+  priorityFull,
   onReorder,
   dndDisabled,
 }: TaskListProps) {
@@ -80,6 +86,9 @@ export function TaskList({
               onToggle={() => onToggle(task.id)}
               onUpdate={(updates) => onUpdate(task.id, updates)}
               onDelete={() => onDelete(task.id)}
+              onArchive={() => onArchive(task.id)}
+              onTogglePriority={() => onTogglePriority(task.id)}
+              priorityFull={priorityFull}
               dndDisabled={dndDisabled}
             />
           ))}

@@ -6,13 +6,13 @@ const STORAGE_KEY = "task-tracker-v1";
 /** Browser localStorage backend (web + PWA). */
 export const localAdapter: StorageAdapter = {
   async load(): Promise<AppState> {
-    if (typeof window === "undefined") return { tasks: [], clients: [] };
+    if (typeof window === "undefined") return { tasks: [], clients: [], notes: [] };
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { tasks: [], clients: [] };
+      if (!raw) return { tasks: [], clients: [], notes: [] };
       return coerceState(JSON.parse(raw));
     } catch {
-      return { tasks: [], clients: [] };
+      return { tasks: [], clients: [], notes: [] };
     }
   },
 
