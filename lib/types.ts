@@ -55,6 +55,7 @@ export interface Client {
   hourTracking?: boolean; // freelance mode: track monthly hours for this client
   monthlyHoursTarget?: number; // optional monthly hours goal
   hourlyRate?: number; // optional $/hour to compute earnings
+  timeEntries?: TimeEntry[]; // hours logged directly to the client (not via a task)
 }
 
 export interface AppState {

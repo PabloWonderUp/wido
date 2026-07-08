@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { makeId, nextClientColor } from "@/lib/utils";
-import type { Client } from "@/lib/types";
+import type { Client, TimeEntry } from "@/lib/types";
 import { getState, setState, subscribe } from "./store";
 
 export function useClients() {
@@ -50,11 +50,54 @@ export function useClients() {
   const getClient = (id?: string): Client | undefined =>
     id ? state.clients.find((c) => c.id === id) : undefined;
 
+  /** Log hours directly to a client (not tied to a task). */
+  const addClientTime = (
+    id: string,
+    seconds: number,
+    note = "",
+    createdAt = Date.now()
+  ) => {
+    if (seconds <= 0) return;
+    const entry: TimeEntry = {
+      id: makeId(),
+      seconds: Math.round(seconds),
+      label: note.trim() || undefined,
+      createdAt,
+      manual: true,
+    };
+    setState((prev) => ({
+      ...prev,
+      clients: prev.clients.map((c) =>
+        c.id === id
+          ? { ...c, timeEntries: [...(c.timeEntries ?? []), entry] }
+          : c
+      ),
+    }));
+  };
+
+  const deleteClientTime = (id: string, entryId: string) => {
+    setState((prev) => ({
+      ...prev,
+      clients: prev.clients.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              timeEntries: (c.timeEntries ?? []).filter(
+                (e) => e.id !== entryId
+              ),
+            }
+          : c
+      ),
+    }));
+  };
+
   return {
     clients: state.clients,
     addClient,
     updateClient,
     deleteClient,
     getClient,
+    addClientTime,
+    deleteClientTime,
   };
 }

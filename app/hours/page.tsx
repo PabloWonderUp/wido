@@ -1,16 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
-import { cn, clientMonthSeconds, formatHours, formatMoney } from "@/lib/utils";
+import {
+  cn,
+  clientMonthSeconds,
+  entriesMonthSeconds,
+  formatDuration,
+  formatHours,
+  formatMoney,
+} from "@/lib/utils";
 import { AppNav } from "@/components/app-nav";
 import { useTasks } from "@/hooks/use-tasks";
 import { useClients } from "@/hooks/use-clients";
+import type { Client, TimeEntry } from "@/lib/types";
 
 export default function HoursPage() {
   const { tasks, hydrated } = useTasks();
-  const { clients } = useClients();
+  const { clients, updateClient, addClientTime, deleteClientTime } =
+    useClients();
 
   // Current month offset: 0 = this month, -1 = last month, …
   const [offset, setOffset] = React.useState(0);
@@ -23,17 +38,28 @@ export default function HoursPage() {
     month: "long",
     year: "numeric",
   });
+  // Timestamp to stamp newly logged hours with (keeps them in the viewed month).
+  const logTs =
+    offset === 0 ? Date.now() : new Date(year, monthIndex, 1).getTime();
 
   const freelanceClients = clients.filter((c) => c.hourTracking);
 
   const rows = freelanceClients.map((c) => {
-    const seconds = clientMonthSeconds(tasks, c.id, year, monthIndex);
+    const taskSeconds = clientMonthSeconds(tasks, c.id, year, monthIndex);
+    const directEntries = (c.timeEntries ?? [])
+      .filter((e) => {
+        const d = new Date(e.createdAt);
+        return d.getFullYear() === year && d.getMonth() === monthIndex;
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+    const directSeconds = entriesMonthSeconds(c.timeEntries, year, monthIndex);
+    const seconds = taskSeconds + directSeconds;
     const hours = seconds / 3600;
     const target = c.monthlyHoursTarget ?? 0;
     const pct = target > 0 ? Math.min(100, Math.round((hours / target) * 100)) : 0;
     const rate = c.hourlyRate ?? 0;
     const amount = hours * rate;
-    return { client: c, seconds, hours, target, pct, rate, amount };
+    return { client: c, seconds, directEntries, hours, target, pct, rate, amount };
   });
 
   const totalSeconds = rows.reduce((s, r) => s + r.seconds, 0);
@@ -99,79 +125,216 @@ export default function HoursPage() {
             </p>
           </div>
         ) : (
-          rows.map(({ client, seconds, hours, target, pct, rate, amount }) => (
-            <div
-              key={client.id}
-              className="rounded-xl border border-border bg-card p-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2">
-                  {client.logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={client.logo}
-                      alt=""
-                      className="h-6 w-6 shrink-0 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: client.color }}
-                    />
-                  )}
-                  <span className="truncate font-semibold">{client.name}</span>
-                </span>
-                <span className="shrink-0 text-right text-sm tabular-nums">
-                  <span className="block">
-                    <span className="font-semibold">{formatHours(seconds)}</span>
-                    {target > 0 && (
-                      <span className="text-muted-foreground"> / {target}h</span>
-                    )}
-                  </span>
-                  {rate > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      {formatMoney(amount)} @ ${rate}/h
-                    </span>
-                  )}
-                </span>
-              </div>
-
-              {target > 0 && (
-                <div className="mt-3">
-                  <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                    <span>{pct}% of goal</span>
-                    <span>
-                      {hours > target
-                        ? `+${(hours - target).toFixed(1)}h over`
-                        : `${(target - hours).toFixed(1)}h left`}
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all",
-                        hours >= target ? "bg-green-500" : ""
-                      )}
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor:
-                          hours >= target ? undefined : client.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {target === 0 && (
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  No monthly goal set — add one in Clients.
-                </p>
-              )}
-            </div>
+          rows.map((row) => (
+            <ClientHoursCard
+              key={row.client.id}
+              {...row}
+              onRateChange={(rate) =>
+                updateClient(row.client.id, { hourlyRate: rate })
+              }
+              onAddHours={(secs, note) =>
+                addClientTime(row.client.id, secs, note, logTs)
+              }
+              onDeleteEntry={(entryId) =>
+                deleteClientTime(row.client.id, entryId)
+              }
+            />
           ))
         )}
       </div>
     </main>
+  );
+}
+
+function ClientHoursCard({
+  client,
+  seconds,
+  directEntries,
+  hours,
+  target,
+  pct,
+  rate,
+  amount,
+  onRateChange,
+  onAddHours,
+  onDeleteEntry,
+}: {
+  client: Client;
+  seconds: number;
+  directEntries: TimeEntry[];
+  hours: number;
+  target: number;
+  pct: number;
+  rate: number;
+  amount: number;
+  onRateChange: (rate: number | undefined) => void;
+  onAddHours: (seconds: number, note: string) => void;
+  onDeleteEntry: (entryId: string) => void;
+}) {
+  const [rateDraft, setRateDraft] = React.useState(rate ? String(rate) : "");
+  const [hoursDraft, setHoursDraft] = React.useState("");
+  const [noteDraft, setNoteDraft] = React.useState("");
+
+  React.useEffect(() => {
+    setRateDraft(rate ? String(rate) : "");
+  }, [rate]);
+
+  const commitRate = () => {
+    const n = parseFloat(rateDraft.replace(",", "."));
+    onRateChange(!Number.isNaN(n) && n > 0 ? n : undefined);
+  };
+
+  const addHours = () => {
+    const h = parseFloat(hoursDraft.replace(",", "."));
+    if (Number.isNaN(h) || h <= 0) return;
+    onAddHours(Math.round(h * 3600), noteDraft);
+    setHoursDraft("");
+    setNoteDraft("");
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-center gap-2">
+          {client.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={client.logo}
+              alt=""
+              className="h-6 w-6 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              className="h-3 w-3 shrink-0 rounded-full"
+              style={{ backgroundColor: client.color }}
+            />
+          )}
+          <span className="truncate font-semibold">{client.name}</span>
+        </span>
+        <span className="shrink-0 text-right text-sm tabular-nums">
+          <span className="block">
+            <span className="font-semibold">{formatHours(seconds)}</span>
+            {target > 0 && (
+              <span className="text-muted-foreground"> / {target}h</span>
+            )}
+          </span>
+          {rate > 0 && (
+            <span className="text-xs font-medium text-green-500">
+              {formatMoney(amount)}
+            </span>
+          )}
+        </span>
+      </div>
+
+      {target > 0 && (
+        <div className="mt-3">
+          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+            <span>{pct}% of goal</span>
+            <span>
+              {hours > target
+                ? `+${(hours - target).toFixed(1)}h over`
+                : `${(target - hours).toFixed(1)}h left`}
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                hours >= target ? "bg-green-500" : ""
+              )}
+              style={{
+                width: `${pct}%`,
+                backgroundColor: hours >= target ? undefined : client.color,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Rate + add hours */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Rate $
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={rateDraft}
+            onChange={(e) => setRateDraft(e.target.value)}
+            onBlur={commitRate}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            placeholder="—"
+            className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          /h
+        </label>
+
+        <div className="flex flex-1 items-center gap-1.5">
+          <input
+            type="number"
+            min={0}
+            step={0.25}
+            inputMode="decimal"
+            value={hoursDraft}
+            onChange={(e) => setHoursDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addHours();
+            }}
+            placeholder="0"
+            className="h-7 w-16 rounded-md border border-input bg-transparent px-2 text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <span className="text-xs text-muted-foreground">h</span>
+          <input
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addHours();
+            }}
+            placeholder="Note (optional)"
+            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <button
+            onClick={addHours}
+            disabled={!hoursDraft.trim()}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add
+          </button>
+        </div>
+      </div>
+
+      {/* Hours logged directly this month */}
+      {directEntries.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {directEntries.map((e) => (
+            <li
+              key={e.id}
+              className="group flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <Clock className="h-3 w-3 shrink-0" />
+              <span className="font-medium tabular-nums text-foreground">
+                {formatDuration(e.seconds)}
+              </span>
+              {e.label && <span className="truncate">· {e.label}</span>}
+              <span className="ml-auto shrink-0">
+                {new Date(e.createdAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+              <button
+                onClick={() => onDeleteEntry(e.id)}
+                aria-label="Delete hours"
+                className="rounded p-0.5 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

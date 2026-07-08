@@ -74,28 +74,12 @@ interface ClientRow {
   hourTracking: number;
   monthlyHoursTarget: number | null;
   hourlyRate: number | null;
+  timeEntries: string | null;
 }
 
 export const sqliteAdapter: StorageAdapter = {
   async load(): Promise<AppState> {
     const db = await getDb();
-
-    const clientRows = (await db.select(
-      "SELECT id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate FROM clients"
-    )) as ClientRow[];
-    const clients: Client[] = clientRows.map((c) => ({
-      id: c.id,
-      name: c.name,
-      color: c.color,
-      logo: c.logo ?? undefined,
-      hourTracking: !!c.hourTracking,
-      monthlyHoursTarget: c.monthlyHoursTarget ?? undefined,
-      hourlyRate: c.hourlyRate ?? undefined,
-    }));
-
-    const taskRows = (await db.select(
-      'SELECT id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, replyDueAt, replySetAt, dueAt, timeSpent, timeEntries, isProject, subtasks, archived, priorityRank FROM tasks'
-    )) as TaskRow[];
 
     const parseJson = <T,>(raw: string | null): T[] | undefined => {
       if (!raw) return undefined;
@@ -106,6 +90,24 @@ export const sqliteAdapter: StorageAdapter = {
         return undefined;
       }
     };
+
+    const clientRows = (await db.select(
+      "SELECT id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate, timeEntries FROM clients"
+    )) as ClientRow[];
+    const clients: Client[] = clientRows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      color: c.color,
+      logo: c.logo ?? undefined,
+      hourTracking: !!c.hourTracking,
+      monthlyHoursTarget: c.monthlyHoursTarget ?? undefined,
+      hourlyRate: c.hourlyRate ?? undefined,
+      timeEntries: parseJson<TimeEntry>(c.timeEntries),
+    }));
+
+    const taskRows = (await db.select(
+      'SELECT id, title, details, client, completed, status, "order", createdAt, completedAt, needsReply, replyTo, replyNote, replyDueAt, replySetAt, dueAt, timeSpent, timeEntries, isProject, subtasks, archived, priorityRank FROM tasks'
+    )) as TaskRow[];
 
     const tasks: Task[] = taskRows.map((r) => ({
       id: r.id,
@@ -158,7 +160,7 @@ export const sqliteAdapter: StorageAdapter = {
 
       for (const c of state.clients) {
         await db.execute(
-          "INSERT INTO clients (id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          "INSERT INTO clients (id, name, color, logo, hourTracking, monthlyHoursTarget, hourlyRate, timeEntries) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
           [
             c.id,
             c.name,
@@ -167,6 +169,7 @@ export const sqliteAdapter: StorageAdapter = {
             c.hourTracking ? 1 : 0,
             c.monthlyHoursTarget ?? null,
             c.hourlyRate ?? null,
+            c.timeEntries ? JSON.stringify(c.timeEntries) : null,
           ]
         );
       }

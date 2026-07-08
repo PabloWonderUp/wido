@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import type { Task } from "./types";
+import type { Task, TimeEntry } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -128,6 +128,22 @@ export function formatDuration(totalSeconds: number): string {
   return `${sec}s`;
 }
 
+/** Sum the seconds of the entries whose createdAt falls in a given month. */
+export function entriesMonthSeconds(
+  entries: TimeEntry[] | undefined,
+  year: number,
+  monthIndex: number
+): number {
+  if (!entries) return 0;
+  const start = new Date(year, monthIndex, 1).getTime();
+  const end = new Date(year, monthIndex + 1, 1).getTime();
+  let sum = 0;
+  for (const e of entries) {
+    if (e.createdAt >= start && e.createdAt < end) sum += e.seconds || 0;
+  }
+  return sum;
+}
+
 /** Seconds tracked for a client's tasks within a given month (year, 0-based month). */
 export function clientMonthSeconds(
   tasks: Task[],
@@ -135,14 +151,10 @@ export function clientMonthSeconds(
   year: number,
   monthIndex: number
 ): number {
-  const start = new Date(year, monthIndex, 1).getTime();
-  const end = new Date(year, monthIndex + 1, 1).getTime();
   let sum = 0;
   for (const t of tasks) {
-    if (t.client !== clientId) continue;
-    for (const e of t.timeEntries ?? []) {
-      if (e.createdAt >= start && e.createdAt < end) sum += e.seconds || 0;
-    }
+    if (t.client === clientId)
+      sum += entriesMonthSeconds(t.timeEntries, year, monthIndex);
   }
   return sum;
 }

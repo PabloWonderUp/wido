@@ -75,6 +75,12 @@ pub fn run() {
         ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add client timeEntries column",
+            sql: "ALTER TABLE clients ADD COLUMN timeEntries TEXT;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
