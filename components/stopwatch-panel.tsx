@@ -36,16 +36,25 @@ export function StopwatchPanel() {
 
   const goalReached = sw.goalMs != null && sw.elapsedMs >= sw.goalMs;
 
-  // Goal editing in hours (decimal), kept in sync with the store.
+  // Goal editing, in hours or minutes, kept in sync with the store.
+  const [goalUnit, setGoalUnit] = React.useState<"h" | "min">(
+    sw.goalMs != null && sw.goalMs < 3_600_000 ? "min" : "h"
+  );
+  const unitMs = goalUnit === "min" ? 60_000 : 3_600_000;
   const [goalDraft, setGoalDraft] = React.useState(
-    sw.goalMs ? String(+(sw.goalMs / 3_600_000).toFixed(2)) : ""
+    sw.goalMs ? String(+(sw.goalMs / unitMs).toFixed(2)) : ""
   );
   React.useEffect(() => {
-    setGoalDraft(sw.goalMs ? String(+(sw.goalMs / 3_600_000).toFixed(2)) : "");
-  }, [sw.goalMs]);
+    const ms = goalUnit === "min" ? 60_000 : 3_600_000;
+    setGoalDraft(sw.goalMs ? String(+(sw.goalMs / ms).toFixed(2)) : "");
+  }, [sw.goalMs, goalUnit]);
   const commitGoal = () => {
-    const h = parseFloat(goalDraft.replace(",", "."));
-    sw.setGoal(!Number.isNaN(h) && h > 0 ? Math.round(h * 3_600_000) : null);
+    const v = parseFloat(goalDraft.replace(",", "."));
+    sw.setGoal(!Number.isNaN(v) && v > 0 ? Math.round(v * unitMs) : null);
+  };
+  const toggleUnit = () => {
+    commitGoal(); // persist current draft in the current unit first
+    setGoalUnit((u) => (u === "h" ? "min" : "h"));
   };
 
   const attachLabel = (() => {
@@ -164,11 +173,16 @@ export function StopwatchPanel() {
           >
             {formatStopwatch(sw.elapsedMs)}
           </span>
-          {goalReached && (
-            <div className="mt-0.5 text-xs font-medium text-green-500">
-              🎉 Goal reached
-            </div>
-          )}
+          {sw.goalMs != null &&
+            (goalReached ? (
+              <div className="mt-0.5 text-xs font-medium text-green-500">
+                🎉 Goal reached
+              </div>
+            ) : (
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {formatStopwatch(sw.goalMs - sw.elapsedMs)} left
+              </div>
+            ))}
         </div>
 
         {/* Goal + alarm */}
@@ -188,7 +202,13 @@ export function StopwatchPanel() {
             placeholder="—"
             className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-center text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
-          <span>h</span>
+          <button
+            onClick={toggleUnit}
+            title="Switch hours / minutes"
+            className="rounded-md px-1.5 py-1 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {goalUnit}
+          </button>
           <button
             onClick={sw.toggleAlarm}
             aria-pressed={sw.alarmEnabled}
