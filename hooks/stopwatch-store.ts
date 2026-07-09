@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { makeId } from "@/lib/utils";
+import { primeAudio } from "@/lib/alarm";
 import type { TimeEntry } from "@/lib/types";
 import { setState as setAppState } from "./store";
 
@@ -27,6 +28,8 @@ interface SW {
   accumulatedMs: number; // completed (paused) time before this segment
   laps: number[]; // elapsed-ms marks
   attach: StopwatchAttach | null;
+  goalMs: number | null; // optional target; alarm fires when reached
+  alarmEnabled: boolean; // play a sound when the goal is hit
 }
 
 let sw: SW = {
@@ -35,6 +38,8 @@ let sw: SW = {
   accumulatedMs: 0,
   laps: [],
   attach: null,
+  goalMs: null,
+  alarmEnabled: true,
 };
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -64,6 +69,8 @@ function load() {
         accumulatedMs: typeof p.accumulatedMs === "number" ? p.accumulatedMs : 0,
         laps: Array.isArray(p.laps) ? p.laps : [],
         attach: p.attach ?? null,
+        goalMs: typeof p.goalMs === "number" ? p.goalMs : null,
+        alarmEnabled: p.alarmEnabled !== false,
       };
     }
   } catch {
@@ -88,6 +95,7 @@ export function elapsedMs(now = Date.now()): number {
 
 function start() {
   if (sw.running) return;
+  primeAudio(); // called from a click — unlocks audio for the later alarm
   set({ running: true, startedAt: Date.now() });
 }
 
@@ -107,6 +115,14 @@ function lap() {
 
 function setAttach(attach: StopwatchAttach | null) {
   set({ attach });
+}
+
+function setGoal(goalMs: number | null) {
+  set({ goalMs });
+}
+
+function toggleAlarm() {
+  set({ alarmEnabled: !sw.alarmEnabled });
 }
 
 function reset() {
@@ -155,6 +171,8 @@ export const stopwatchActions = {
   toggle,
   lap,
   setAttach,
+  setGoal,
+  toggleAlarm,
   reset,
   saveAndReset,
 };
@@ -187,6 +205,8 @@ export function useStopwatch() {
     running: state.running,
     laps: state.laps,
     attach: state.attach,
+    goalMs: state.goalMs,
+    alarmEnabled: state.alarmEnabled,
     elapsedMs: mounted ? elapsedMs() : 0,
     hasTime: mounted && (state.running || elapsedMs() > 0),
     mounted,

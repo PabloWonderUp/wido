@@ -10,6 +10,7 @@ import { AuthSync } from "@/components/auth-sync";
 import { AuthGate } from "@/components/auth-gate";
 import { OfflineProvider } from "@/components/offline-provider";
 import { FloatingStopwatch } from "@/components/floating-stopwatch";
+import { StopwatchTitle } from "@/components/stopwatch-title";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -58,6 +59,7 @@ export default function RootLayout({
           </OfflineProvider>
           <AuthSync />
           <FloatingStopwatch />
+          <StopwatchTitle />
           <ServiceWorker />
         </ThemeProvider>
       </body>

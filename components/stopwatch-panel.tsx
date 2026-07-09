@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import {
+  Bell,
+  BellOff,
   Check,
   Flag,
   Pause,
@@ -31,6 +33,20 @@ export function StopwatchPanel() {
   const { clients, getClient } = useClients();
 
   const activeTasks = tasks.filter((t) => !t.archived && !t.completed);
+
+  const goalReached = sw.goalMs != null && sw.elapsedMs >= sw.goalMs;
+
+  // Goal editing in hours (decimal), kept in sync with the store.
+  const [goalDraft, setGoalDraft] = React.useState(
+    sw.goalMs ? String(+(sw.goalMs / 3_600_000).toFixed(2)) : ""
+  );
+  React.useEffect(() => {
+    setGoalDraft(sw.goalMs ? String(+(sw.goalMs / 3_600_000).toFixed(2)) : "");
+  }, [sw.goalMs]);
+  const commitGoal = () => {
+    const h = parseFloat(goalDraft.replace(",", "."));
+    sw.setGoal(!Number.isNaN(h) && h > 0 ? Math.round(h * 3_600_000) : null);
+  };
 
   const attachLabel = (() => {
     if (!sw.attach) return null;
@@ -140,9 +156,56 @@ export function StopwatchPanel() {
 
         {/* Elapsed */}
         <div className="py-2 text-center">
-          <span className="font-mono text-4xl font-bold tabular-nums">
+          <span
+            className={cn(
+              "font-mono text-4xl font-bold tabular-nums",
+              goalReached && "text-green-500"
+            )}
+          >
             {formatStopwatch(sw.elapsedMs)}
           </span>
+          {goalReached && (
+            <div className="mt-0.5 text-xs font-medium text-green-500">
+              🎉 Goal reached
+            </div>
+          )}
+        </div>
+
+        {/* Goal + alarm */}
+        <div className="mb-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <span>Goal</span>
+          <input
+            type="number"
+            min={0}
+            step={0.25}
+            inputMode="decimal"
+            value={goalDraft}
+            onChange={(e) => setGoalDraft(e.target.value)}
+            onBlur={commitGoal}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            placeholder="—"
+            className="h-7 w-14 rounded-md border border-input bg-transparent px-2 text-center text-sm tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <span>h</span>
+          <button
+            onClick={sw.toggleAlarm}
+            aria-pressed={sw.alarmEnabled}
+            title={sw.alarmEnabled ? "Alarm on" : "Alarm off"}
+            className={cn(
+              "rounded p-1 transition-colors",
+              sw.alarmEnabled
+                ? "text-sky-500 hover:bg-sky-500/10"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+          >
+            {sw.alarmEnabled ? (
+              <Bell className="h-3.5 w-3.5" />
+            ) : (
+              <BellOff className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
 
         {/* Controls */}
