@@ -27,6 +27,7 @@ import { BoardView } from "@/components/board-view";
 import { BoardSwimlanes } from "@/components/board-swimlanes";
 import { ProjectsView } from "@/components/projects-view";
 import { ReplyPanel } from "@/components/reply-panel";
+import { StopwatchPanel } from "@/components/stopwatch-panel";
 import { StatusFilter } from "@/components/status-filter";
 import { ClientFilter } from "@/components/client-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -180,8 +181,8 @@ export default function Home() {
     (t) => t.needsReply && !t.completed
   ).length;
 
-  // List view gains a right-hand "To reply" panel when something is pending.
-  const listWithReplies = view === "list" && toReplyCount > 0;
+  // List view gains a right-hand sidebar (reply panel + stopwatch).
+  const showSidebar = view === "list" && !showArchived;
 
   const toggleExpand = (id: string) =>
     setExpandedId((cur) => (cur === id ? null : id));
@@ -192,7 +193,7 @@ export default function Home() {
         "mx-auto min-h-screen w-full px-4 py-10 sm:px-6",
         view === "board"
           ? "max-w-[110rem]"
-          : listWithReplies
+          : showSidebar
           ? "max-w-5xl"
           : "max-w-2xl"
       )}
@@ -203,14 +204,12 @@ export default function Home() {
 
       <div
         className={cn(
-          listWithReplies &&
+          showSidebar &&
             "md:flex md:items-start md:gap-4 lg:gap-6 xl:justify-center"
         )}
       >
         <div
-          className={cn(
-            listWithReplies && "min-w-0 md:flex-1 xl:max-w-2xl"
-          )}
+          className={cn(showSidebar && "min-w-0 md:flex-1 xl:max-w-2xl")}
         >
       {/* Header */}
       <header className="flex items-start justify-between gap-4">
@@ -491,22 +490,26 @@ export default function Home() {
       </div>
         </div>
 
-        {listWithReplies && (
-          <ReplyPanel
-            className="mt-6 md:mt-0 md:w-56 md:shrink-0 md:sticky md:top-10 md:max-h-[calc(100vh-5rem)] md:overflow-y-auto lg:w-64 xl:w-72"
-            tasks={activeTasks}
-            getClient={getClient}
-            onUpdate={updateTask}
-            onOpen={(id) => {
-              setShowArchived(false);
-              setExpandedId(id);
-              requestAnimationFrame(() =>
-                document
-                  .getElementById(`task-${id}`)
-                  ?.scrollIntoView({ behavior: "smooth", block: "center" })
-              );
-            }}
-          />
+        {showSidebar && (
+          <div className="mt-6 space-y-4 md:mt-0 md:w-56 md:shrink-0 md:sticky md:top-10 md:max-h-[calc(100vh-5rem)] md:overflow-y-auto lg:w-64 xl:w-72">
+            {toReplyCount > 0 && (
+              <ReplyPanel
+                tasks={activeTasks}
+                getClient={getClient}
+                onUpdate={updateTask}
+                onOpen={(id) => {
+                  setShowArchived(false);
+                  setExpandedId(id);
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById(`task-${id}`)
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  );
+                }}
+              />
+            )}
+            <StopwatchPanel />
+          </div>
         )}
       </div>
     </main>

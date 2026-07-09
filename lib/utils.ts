@@ -117,6 +117,17 @@ export function formatClock(totalSeconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
+/** Milliseconds -> stopwatch clock "H:MM:SS" (drops the hour when zero). */
+export function formatStopwatch(totalMs: number): string {
+  const s = Math.max(0, Math.floor(totalMs / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const mm = String(m).padStart(2, "0");
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 /** Seconds -> compact tracked-time label, e.g. "1h 05m", "12m", "45s". */
 export function formatDuration(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));

@@ -9,6 +9,7 @@ import { NoteDialogProvider } from "@/components/note-dialog";
 import { AuthSync } from "@/components/auth-sync";
 import { AuthGate } from "@/components/auth-gate";
 import { OfflineProvider } from "@/components/offline-provider";
+import { FloatingStopwatch } from "@/components/floating-stopwatch";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -56,6 +57,7 @@ export default function RootLayout({
             </ClientManagerProvider>
           </OfflineProvider>
           <AuthSync />
+          <FloatingStopwatch />
           <ServiceWorker />
         </ThemeProvider>
       </body>
