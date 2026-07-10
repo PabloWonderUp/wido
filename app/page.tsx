@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   Archive,
   ArrowUpDown,
+  Check,
   FolderKanban,
   LayoutGrid,
   List as ListIcon,
@@ -154,12 +155,7 @@ export default function Home() {
         arr.sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity));
       }
     }
-    // Checked tasks always sink to the bottom (stable — doesn't touch `order`,
-    // so unchecking restores a task to its natural place).
-    return [
-      ...arr.filter((t) => !t.completed),
-      ...arr.filter((t) => t.completed),
-    ];
+    return arr;
   }, [visibleTasks, sort, getClient]);
 
   // Daily Top-5 focus list (curated, ordered by rank). Shown above the list.
@@ -168,9 +164,24 @@ export default function Home() {
     .sort((a, b) => a.priorityRank! - b.priorityRank!);
   const priorityFull = priorityTasks.length >= 5;
   const showTop5 = view === "list" && !showArchived && priorityTasks.length > 0;
-  const mainTasks = showTop5
+  const mainVisible = showTop5
     ? sortedTasks.filter((t) => t.priorityRank == null)
     : sortedTasks;
+
+  // Split the main list into pending / done so we can slot a divider between
+  // them and organize the pending ones by due date.
+  const pendingMain = React.useMemo(() => {
+    const pending = mainVisible.filter((t) => !t.completed);
+    // In manual mode, dated tasks float to the top ordered by due date, while
+    // undated ones keep their manual (drag) order below (Array.sort is stable).
+    if (sort === "manual") {
+      return [...pending].sort(
+        (a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity)
+      );
+    }
+    return pending;
+  }, [mainVisible, sort]);
+  const doneMain = mainVisible.filter((t) => t.completed);
 
   const pendingCount = activeTasks.filter((t) => !t.completed).length;
   const startOfToday = new Date().setHours(0, 0, 0, 0);
@@ -460,7 +471,7 @@ export default function Home() {
               </div>
             )}
 
-            {mainTasks.length === 0 ? (
+            {pendingMain.length === 0 && doneMain.length === 0 ? (
               showTop5 ? null : (
                 <EmptyState
                   hasTasks={tasks.length > 0}
@@ -468,22 +479,58 @@ export default function Home() {
                 />
               )
             ) : (
-              <TaskList
-                tasks={mainTasks}
-                expandedId={expandedId}
-                onToggleExpand={toggleExpand}
-                onToggle={toggleTask}
-                onUpdate={updateTask}
-                onDelete={(id) => {
-                  deleteTask(id);
-                  setExpandedId((cur) => (cur === id ? null : cur));
-                }}
-                onArchive={toggleArchived}
-                onTogglePriority={togglePriority}
-                priorityFull={priorityFull}
-                onReorder={reorderTasks}
-                dndDisabled={sort !== "manual"}
-              />
+              <div className="space-y-2">
+                {pendingMain.length > 0 && (
+                  <TaskList
+                    tasks={pendingMain}
+                    expandedId={expandedId}
+                    onToggleExpand={toggleExpand}
+                    onToggle={toggleTask}
+                    onUpdate={updateTask}
+                    onDelete={(id) => {
+                      deleteTask(id);
+                      setExpandedId((cur) => (cur === id ? null : cur));
+                    }}
+                    onArchive={toggleArchived}
+                    onTogglePriority={togglePriority}
+                    priorityFull={priorityFull}
+                    onReorder={reorderTasks}
+                    dndDisabled={sort !== "manual"}
+                  />
+                )}
+
+                {doneMain.length > 0 && (
+                  <>
+                    <div className="my-4 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <Check className="h-3.5 w-3.5" />
+                        Completadas
+                        <span className="rounded-full bg-muted px-1.5 text-xs font-medium">
+                          {doneMain.length}
+                        </span>
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                    <TaskList
+                      tasks={doneMain}
+                      expandedId={expandedId}
+                      onToggleExpand={toggleExpand}
+                      onToggle={toggleTask}
+                      onUpdate={updateTask}
+                      onDelete={(id) => {
+                        deleteTask(id);
+                        setExpandedId((cur) => (cur === id ? null : cur));
+                      }}
+                      onArchive={toggleArchived}
+                      onTogglePriority={togglePriority}
+                      priorityFull={priorityFull}
+                      onReorder={reorderTasks}
+                      dndDisabled
+                    />
+                  </>
+                )}
+              </div>
             )}
           </>
         )}

@@ -13,7 +13,7 @@ import {
   FolderKanban,
   GripVertical,
   MessageSquare,
-  Star,
+  Plus,
   Trash2,
   X,
 } from "lucide-react";
@@ -227,7 +227,7 @@ export function TaskItem({
           )}
         </div>
 
-        {/* Priority pin — into the daily Top 5 */}
+        {/* Priority pin — into the daily Top 5, shown as its rank number */}
         {(() => {
           const pinned = task.priorityRank != null;
           const disabled = !pinned && priorityFull;
@@ -238,24 +238,21 @@ export function TaskItem({
               aria-pressed={pinned}
               title={
                 pinned
-                  ? "Remove from Top 5"
+                  ? `Priority #${task.priorityRank} — remove from Top 5`
                   : disabled
                   ? "Top 5 is full"
                   : "Add to Top 5"
               }
               className={cn(
-                "rounded p-1 transition-colors focus-visible:opacity-100",
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors focus-visible:opacity-100",
                 pinned
-                  ? "text-amber-500 opacity-100 hover:text-amber-400"
+                  ? "bg-amber-500 text-white opacity-100 hover:bg-amber-400"
                   : disabled
                   ? "cursor-not-allowed text-muted-foreground/40 opacity-0 group-hover:opacity-100"
                   : "text-muted-foreground opacity-0 hover:text-amber-500 group-hover:opacity-100"
               )}
             >
-              <Star
-                className="h-4 w-4"
-                fill={pinned ? "currentColor" : "none"}
-              />
+              {pinned ? task.priorityRank : <Plus className="h-3.5 w-3.5" />}
             </button>
           );
         })()}
