@@ -80,6 +80,7 @@ export default function Home() {
   const [view, setView] = React.useState<ViewMode>("list");
   const [sort, setSort] = React.useState<SortMode>("manual");
   const [groupBy, setGroupBy] = React.useState<BoardGroupBy>("status");
+  const [doneLimit, setDoneLimit] = React.useState(3);
 
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -182,6 +183,7 @@ export default function Home() {
     return pending;
   }, [mainVisible, sort]);
   const doneMain = mainVisible.filter((t) => t.completed);
+  const doneShown = doneMain.slice(0, doneLimit);
 
   const pendingCount = activeTasks.filter((t) => !t.completed).length;
   const startOfToday = new Date().setHours(0, 0, 0, 0);
@@ -513,7 +515,7 @@ export default function Home() {
                       <div className="h-px flex-1 bg-border" />
                     </div>
                     <TaskList
-                      tasks={doneMain}
+                      tasks={doneShown}
                       expandedId={expandedId}
                       onToggleExpand={toggleExpand}
                       onToggle={toggleTask}
@@ -528,6 +530,14 @@ export default function Home() {
                       onReorder={reorderTasks}
                       dndDisabled
                     />
+                    {doneMain.length > doneShown.length && (
+                      <button
+                        onClick={() => setDoneLimit((n) => n + 10)}
+                        className="mt-2 w-full rounded-lg border border-dashed border-border py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        Load more ({doneMain.length - doneShown.length})
+                      </button>
+                    )}
                   </>
                 )}
               </div>

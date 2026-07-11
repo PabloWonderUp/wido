@@ -49,9 +49,30 @@ async function reschedule() {
   chrome.alarms.create(TICK_ALARM, { periodInMinutes: 1 });
   if (t.goalMs != null) {
     const remaining = t.goalMs - elapsedMs(t);
-    chrome.alarms.create(GOAL_ALARM, {
-      when: Date.now() + Math.max(0, remaining),
+    // Only arm if the goal is still ahead — avoids re-firing on resume past it.
+    if (remaining > 0) {
+      chrome.alarms.create(GOAL_ALARM, { when: Date.now() + remaining });
+    }
+  }
+}
+
+// MV3 service workers can't play audio — do it from an offscreen document.
+async function playAlarmSound() {
+  try {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ["OFFSCREEN_DOCUMENT"],
     });
+    if (contexts.length === 0) {
+      await chrome.offscreen.createDocument({
+        url: "offscreen.html",
+        reasons: ["AUDIO_PLAYBACK"],
+        justification: "Play the timer goal alarm sound.",
+      });
+      await sleep(150); // let the offscreen script register its listener
+    }
+    await chrome.runtime.sendMessage({ type: "PLAY_ALARM" });
+  } catch {
+    /* offscreen unavailable — the notification still fires */
   }
 }
 
@@ -59,6 +80,7 @@ async function fireGoal() {
   const t = await getTimer();
   if (!t.running || t.goalMs == null || elapsedMs(t) < t.goalMs) return;
   if (t.alarmEnabled) {
+    await playAlarmSound();
     chrome.notifications.create(GOAL_ALARM, {
       type: "basic",
       iconUrl: "icons/icon-192.png",

@@ -14,6 +14,7 @@ import {
   GripVertical,
   MessageSquare,
   Plus,
+  Tag,
   Trash2,
   X,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import {
 import { STATUS_META, statusOf } from "@/lib/status";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClientBadge } from "@/components/client-badge";
+import { ClientPicker } from "@/components/client-picker";
 import { TaskDetails } from "@/components/task-details";
 import { useClients } from "@/hooks/use-clients";
 import type { Task } from "@/lib/types";
@@ -189,7 +191,28 @@ export function TaskItem({
             </span>
           )}
 
-          {client && <ClientBadge client={client} className="shrink-0" />}
+          <ClientPicker
+            value={task.client}
+            onChange={(id) => onUpdate({ client: id })}
+          >
+            {client ? (
+              <button
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 rounded-full outline-none"
+                title="Change client"
+              >
+                <ClientBadge client={client} />
+              </button>
+            ) : (
+              <button
+                onClick={(e) => e.stopPropagation()}
+                title="Assign client"
+                className="hidden shrink-0 items-center rounded p-1 text-muted-foreground outline-none hover:text-foreground group-hover:inline-flex"
+              >
+                <Tag className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </ClientPicker>
 
           {task.needsReply && task.replyTo && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
