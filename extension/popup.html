@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <section id="timer" class="view">
+      <header>
+        <span class="phase">Stopwatch</span>
+        <span id="conn" class="muted small"></span>
+      </header>
+
+      <div class="clock" id="clock">00:00</div>
+
+      <label class="field">
+        <span>Working on</span>
+        <select id="attach">
+          <option value="">No task (free timer)</option>
+        </select>
+      </label>
+
+      <button id="new-task-toggle" class="linklike">➕ New task</button>
+      <div id="new-task-row" class="row hidden">
+        <input id="new-task-title" type="text" placeholder="New task title" />
+        <button id="new-task-create" class="go small">Add</button>
+      </div>
+
+      <div id="notice" class="notice hidden">
+        <span id="notice-text"></span>
+        <button id="open-wido" class="ghost small">Open Wido</button>
+      </div>
+
+      <div class="controls" id="controls"></div>
+
+      <details class="goal">
+        <summary>Goal &amp; alarm</summary>
+        <div class="row">
+          <input id="goal" type="number" min="0" step="1" placeholder="minutes" />
+          <label class="checkbox">
+            <input id="alarm" type="checkbox" checked /> Alarm
+          </label>
+        </div>
+      </details>
+
+      <p id="timer-msg" class="muted"></p>
+      <p id="timer-error" class="error hidden"></p>
+    </section>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Wido Timer",
+  "version": "1.0.0",
+  "description": "Stopwatch for Wido — track time straight into your tasks and clients.",
+  "permissions": ["storage", "alarms", "notifications", "tabs", "scripting"],
+  "host_permissions": [
+    "https://uxknhteklotswemtyvur.supabase.co/*",
+    "https://wido-theta.vercel.app/*",
+    "http://localhost:3002/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Wido Timer",
+    "default_icon": {
+      "192": "icons/icon-192.png",
+      "512": "icons/icon-512.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "192": "icons/icon-192.png",
+    "512": "icons/icon-512.png"
+  }
+}

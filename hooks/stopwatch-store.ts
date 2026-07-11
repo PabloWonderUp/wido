@@ -30,6 +30,7 @@ interface SW {
   attach: StopwatchAttach | null;
   goalMs: number | null; // optional target; alarm fires when reached
   alarmEnabled: boolean; // play a sound when the goal is hit
+  updatedAt: number; // last write time — arbitrates sync with the extension
 }
 
 let sw: SW = {
@@ -40,6 +41,7 @@ let sw: SW = {
   attach: null,
   goalMs: null,
   alarmEnabled: true,
+  updatedAt: 0,
 };
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -71,6 +73,7 @@ function load() {
         attach: p.attach ?? null,
         goalMs: typeof p.goalMs === "number" ? p.goalMs : null,
         alarmEnabled: p.alarmEnabled !== false,
+        updatedAt: typeof p.updatedAt === "number" ? p.updatedAt : 0,
       };
     }
   } catch {
@@ -80,9 +83,47 @@ function load() {
 }
 
 function set(next: Partial<SW>) {
-  sw = { ...sw, ...next };
+  sw = { ...sw, ...next, updatedAt: Date.now() };
   persist();
   emit();
+}
+
+/**
+ * Adopt a state written externally (the Chrome extension, or another tab) when
+ * it's newer than ours. Keeps the app's stopwatch in sync with the extension:
+ * both are timestamp-derived, so sharing state is enough to show the same time.
+ */
+function applyExternal() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    const incoming = typeof p.updatedAt === "number" ? p.updatedAt : 0;
+    if (incoming <= (sw.updatedAt || 0)) return; // not newer — ignore
+    sw = {
+      running: !!p.running,
+      startedAt: typeof p.startedAt === "number" ? p.startedAt : null,
+      accumulatedMs: typeof p.accumulatedMs === "number" ? p.accumulatedMs : 0,
+      laps: Array.isArray(p.laps) ? p.laps : [],
+      attach: p.attach ?? null,
+      goalMs: typeof p.goalMs === "number" ? p.goalMs : null,
+      alarmEnabled: p.alarmEnabled !== false,
+      updatedAt: incoming,
+    };
+    loaded = true;
+    emit();
+  } catch {
+    /* ignore */
+  }
+}
+
+if (typeof window !== "undefined") {
+  // `storage` fires from OTHER tabs; the extension writes localStorage in this
+  // tab and dispatches `wido-stopwatch-ping` so we react in-tab too.
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY) applyExternal();
+  });
+  window.addEventListener("wido-stopwatch-ping", applyExternal as EventListener);
 }
 
 function getState() {
