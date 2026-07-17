@@ -19,6 +19,13 @@ if (url && anonKey) {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true, // handles the OAuth redirect for a static SPA
+      // PKCE over the default implicit flow: the callback carries a one-time
+      // `?code=` exchanged fresh for a session, instead of long-lived tokens in
+      // the URL hash. Fixes iOS/PWA "Session as retrieved from URL was issued
+      // over 120s ago, URL could be stale" — a reopened/cached callback URL was
+      // getting its stale token rejected, silently dropping the tablet into
+      // local-only mode (where deletes never reached the cloud → resurrected).
+      flowType: "pkce",
     },
   });
 }

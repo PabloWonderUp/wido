@@ -9,6 +9,7 @@ import {
 import { localAdapter } from "@/lib/storage/local";
 import { mergeStates } from "@/lib/merge";
 import { makeId } from "@/lib/utils";
+import { summarizeState } from "@/lib/debug";
 import type { AppState } from "@/lib/types";
 
 /** One-time: fold a legacy `timeSpent` aggregate into a time entry. */
@@ -80,15 +81,17 @@ export async function hydrate() {
   if (hydrated || hydrating) return;
   hydrating = true;
   const key = currentBackendKey();
+  console.log("[wido] hydrate: loading from", key);
   try {
     state = migrate(await loadState());
     boundKey = key; // safe to persist to this backend now
     hydrated = true;
+    console.log("[wido] hydrate <- BOUND to", key, summarizeState(state));
   } catch (err) {
     // Load failed — leave state untouched and stay UNBOUND so nothing gets
     // written back over a backend we couldn't read. A later rehydrate/reload
     // will reconcile.
-    console.error("[wido] hydrate failed", err);
+    console.error("[wido] hydrate FAILED — staying UNBOUND", err);
   } finally {
     hydrating = false;
     emit();
@@ -102,17 +105,19 @@ export async function hydrate() {
  */
 export async function rehydrate(): Promise<boolean> {
   const key = currentBackendKey();
+  console.log("[wido] rehydrate: reloading from", key);
   try {
     const next = migrate(await loadState());
     state = next;
     boundKey = key;
     hydrated = true;
     emit();
+    console.log("[wido] rehydrate <- BOUND to", key, summarizeState(next));
     return true;
   } catch (err) {
     // Couldn't load this backend (e.g. cloud unreachable / token issue). Do
     // NOT bind and do NOT clobber — keep showing whatever we already have.
-    console.error("[wido] rehydrate failed", err);
+    console.error("[wido] rehydrate FAILED — kept current state, NOT bound", err);
     return false;
   }
 }
@@ -127,7 +132,13 @@ let flushing = false;
 let dirty = false;
 
 async function flush() {
-  if (currentBackendKey() !== boundKey) return; // not bound — never clobber
+  if (currentBackendKey() !== boundKey) {
+    console.warn(
+      "[wido] flush SKIPPED — store not bound; edit will NOT persist",
+      { active: currentBackendKey(), bound: boundKey }
+    );
+    return; // not bound — never clobber
+  }
   if (flushing) {
     dirty = true; // an edit landed mid-save; run again after
     return;
@@ -135,19 +146,29 @@ async function flush() {
   flushing = true;
   dirty = false;
   const snapshot = state;
+  console.log("[wido] flush: saving to", boundKey, summarizeState(snapshot));
   try {
     const merged = await saveStateMerged(snapshot);
+    console.log(
+      "[wido] flush <- saved & merged back from",
+      boundKey,
+      summarizeState(merged)
+    );
     // Only adopt the merged result if no newer edit happened while saving, so
     // we surface other devices' items without dropping a fresh local edit.
     if (state === snapshot && merged) {
       const next = migrate(merged);
       if (JSON.stringify(next) !== JSON.stringify(state)) {
+        console.log(
+          "[wido] flush: merge brought in changes from the cloud",
+          summarizeState(next)
+        );
         state = next;
         emit();
       }
     }
   } catch (err) {
-    console.error("[wido] save failed", err);
+    console.error("[wido] save FAILED — will retry", err);
     dirty = true; // retry
   } finally {
     flushing = false;
@@ -199,10 +220,12 @@ export function replaceState(next: AppState) {
  */
 export function applyRemoteState(next: AppState) {
   if (currentBackendKey() !== boundKey) return; // not bound to this backend
+  console.log("[wido] realtime push received", summarizeState(next));
   // Merge (don't replace): union in the remote changes + tombstones while
   // keeping any local edits not yet flushed, so nothing is dropped either way.
   const migrated = migrate(mergeStates(next, state));
   if (JSON.stringify(migrated) === JSON.stringify(state)) return; // no change
+  console.log("[wido] realtime push applied — new state", summarizeState(migrated));
   state = migrated;
   hydrated = true;
   emit();

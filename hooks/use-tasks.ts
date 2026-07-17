@@ -256,6 +256,8 @@ export function useTasks() {
   };
 
   const deleteTask = (id: string) => {
+    const t = getState().tasks.find((x) => x.id === id);
+    console.log("[wido] deleteTask:", id, t?.title, "→ tombstoning");
     setState((prev) => ({
       ...prev,
       tasks: prev.tasks.filter((t) => t.id !== id),
