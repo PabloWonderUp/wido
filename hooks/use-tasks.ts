@@ -20,25 +20,38 @@ export function useTasks() {
     hydrate();
   }, []);
 
-  const addTask = (title: string) => {
+  /**
+   * Create a task and return its id. Optional `opts` let the composer set the
+   * client / mark it a project up front; the returned id lets the caller attach
+   * a linked note right away.
+   */
+  const addTask = (
+    title: string,
+    opts?: { client?: string; isProject?: boolean }
+  ): string => {
     const trimmed = title.trim();
-    if (!trimmed) return;
+    if (!trimmed) return "";
+    const id = makeId();
     setState((prev) => {
       const minOrder = prev.tasks.reduce(
         (min, t) => Math.min(min, t.order),
         0
       );
       const newTask: Task = {
-        id: makeId(),
+        id,
         title: trimmed,
         completed: false,
         status: "todo",
         order: minOrder - 1, // newest on top
+        client: opts?.client,
+        isProject: opts?.isProject || undefined,
+        subtasks: opts?.isProject ? [] : undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
       return { ...prev, tasks: [newTask, ...prev.tasks] };
     });
+    return id;
   };
 
   // Completing a pinned task auto-unpins it and renumbers the remaining Top-5.
