@@ -34,7 +34,10 @@ export function AuthSync() {
           if (cloud.tasks.length === 0 && cloud.clients.length === 0) {
             const local = await localAdapter.load();
             if (local.tasks.length > 0 || local.clients.length > 0) {
-              await supabaseAdapter.save(local);
+              // MERGE (not overwrite): respects any tombstones already in the
+              // cloud, so an intentionally-emptied account can't be resurrected
+              // by a stale local copy on another device.
+              await supabaseAdapter.saveMerged!(local);
             }
           }
         } catch (err) {

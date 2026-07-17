@@ -6,6 +6,7 @@ import {
   saveStateMerged,
   currentBackendKey,
 } from "@/lib/storage";
+import { localAdapter } from "@/lib/storage/local";
 import { mergeStates } from "@/lib/merge";
 import { makeId } from "@/lib/utils";
 import type { AppState } from "@/lib/types";
@@ -163,6 +164,17 @@ export function setState(updater: (prev: AppState) => AppState) {
   state = updater(state);
   emit();
   persist();
+}
+
+/**
+ * Overwrite the local (localStorage) cache with the current state. Called after
+ * a destructive clear so no stale local copy can resurrect deleted data via the
+ * first-login seed or offline mode. Safe on all targets (writes localStorage).
+ */
+export function syncLocalCache() {
+  void localAdapter.save(state).catch((err) =>
+    console.error("[wido] local cache sync failed", err)
+  );
 }
 
 /**

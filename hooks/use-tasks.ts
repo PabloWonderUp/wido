@@ -9,6 +9,7 @@ import {
   isHydrated,
   setState,
   subscribe,
+  syncLocalCache,
 } from "./store";
 
 export function useTasks() {
@@ -257,6 +258,8 @@ export function useTasks() {
       for (const t of prev.tasks) deletedAt[t.id] = now;
       return { ...prev, tasks: [], deletedAt };
     });
+    // Also wipe the local cache so a stale copy can't bring the tasks back.
+    syncLocalCache();
   };
 
   /** Archive / unarchive: hides from the main views but keeps the task. */
