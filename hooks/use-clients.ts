@@ -44,6 +44,7 @@ export function useClients() {
       tasks: prev.tasks.map((t) =>
         t.client === id ? { ...t, client: undefined } : t
       ),
+      deletedAt: { ...prev.deletedAt, [id]: Date.now() },
     }));
   };
 

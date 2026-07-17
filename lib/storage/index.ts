@@ -15,7 +15,14 @@ import { getActiveUser } from "./active-user";
  */
 export interface StorageAdapter {
   load(): Promise<AppState>;
+  /** Overwrite the backend with `state` (used for import/restore). */
   save(state: AppState): Promise<void>;
+  /**
+   * Optional: persist with a non-destructive read-merge-write (cloud only).
+   * Returns the merged state actually written. Adapters without it fall back
+   * to `save` (fine for single-device local/sqlite).
+   */
+  saveMerged?(state: AppState): Promise<AppState>;
 }
 
 export function isTauri(): boolean {
@@ -56,7 +63,21 @@ export function coerceState(input: unknown): AppState {
     tasks: Array.isArray(obj.tasks) ? obj.tasks : [],
     clients: Array.isArray(obj.clients) ? obj.clients : [],
     notes: Array.isArray(obj.notes) ? obj.notes : [],
+    deletedAt:
+      obj.deletedAt && typeof obj.deletedAt === "object" ? obj.deletedAt : {},
   };
+}
+
+/**
+ * Persist without losing data: on the cloud this reads the latest row and
+ * MERGES (union + tombstones) before writing, with a version check, so a save
+ * never clobbers another device's changes. Returns the authoritative state
+ * that was written (merged for cloud; the same state for local/sqlite).
+ */
+export function saveStateMerged(state: AppState): Promise<AppState> {
+  const adapter = getAdapter();
+  if (adapter.saveMerged) return adapter.saveMerged(state);
+  return adapter.save(state).then(() => state);
 }
 
 const EXPORT_VERSION = 1;

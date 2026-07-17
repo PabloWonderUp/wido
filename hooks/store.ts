@@ -1,6 +1,12 @@
 "use client";
 
-import { loadState, saveState, currentBackendKey } from "@/lib/storage";
+import {
+  loadState,
+  saveState,
+  saveStateMerged,
+  currentBackendKey,
+} from "@/lib/storage";
+import { mergeStates } from "@/lib/merge";
 import { makeId } from "@/lib/utils";
 import type { AppState } from "@/lib/types";
 
@@ -110,25 +116,46 @@ export async function rehydrate(): Promise<boolean> {
   }
 }
 
-/** Persist to the active backend, but only if the store is bound to it. */
-function persist() {
-  if (currentBackendKey() !== boundKey) {
-    // Backend switched (e.g. mid-login) but we haven't loaded from it yet —
-    // skip the write so we never overwrite it with the wrong data.
+/**
+ * Serialized, non-destructive persistence. Only one save runs at a time; edits
+ * made during a save re-trigger it afterwards. The cloud save reads-merges-
+ * writes (see saveStateMerged), so it never clobbers another device — and we
+ * adopt the merged result so this device also picks up others' changes.
+ */
+let flushing = false;
+let dirty = false;
+
+async function flush() {
+  if (currentBackendKey() !== boundKey) return; // not bound — never clobber
+  if (flushing) {
+    dirty = true; // an edit landed mid-save; run again after
     return;
   }
+  flushing = true;
+  dirty = false;
   const snapshot = state;
-  void saveState(snapshot).catch(async (err) => {
-    // Retry once for transient blips before giving up loudly.
-    console.error("[wido] save failed, retrying once", err);
-    try {
-      if (currentBackendKey() === boundKey && state === snapshot) {
-        await saveState(snapshot);
+  try {
+    const merged = await saveStateMerged(snapshot);
+    // Only adopt the merged result if no newer edit happened while saving, so
+    // we surface other devices' items without dropping a fresh local edit.
+    if (state === snapshot && merged) {
+      const next = migrate(merged);
+      if (JSON.stringify(next) !== JSON.stringify(state)) {
+        state = next;
+        emit();
       }
-    } catch (err2) {
-      console.error("[wido] save failed after retry", err2);
     }
-  });
+  } catch (err) {
+    console.error("[wido] save failed", err);
+    dirty = true; // retry
+  } finally {
+    flushing = false;
+    if (dirty) setTimeout(() => void flush(), 800);
+  }
+}
+
+function persist() {
+  void flush();
 }
 
 /** Replace state via an updater; update the UI immediately, persist async. */
@@ -138,11 +165,17 @@ export function setState(updater: (prev: AppState) => AppState) {
   persist();
 }
 
-/** Replace the whole state (used by import/restore). */
+/**
+ * Replace the whole state (import / restore). This is an intentional overwrite,
+ * so it bypasses the merge and writes directly to the backend.
+ */
 export function replaceState(next: AppState) {
   state = next;
   emit();
-  persist();
+  if (currentBackendKey() !== boundKey) return;
+  void saveState(next).catch((err) =>
+    console.error("[wido] restore/overwrite failed", err)
+  );
 }
 
 /**
@@ -154,7 +187,9 @@ export function replaceState(next: AppState) {
  */
 export function applyRemoteState(next: AppState) {
   if (currentBackendKey() !== boundKey) return; // not bound to this backend
-  const migrated = migrate(next);
+  // Merge (don't replace): union in the remote changes + tombstones while
+  // keeping any local edits not yet flushed, so nothing is dropped either way.
+  const migrated = migrate(mergeStates(next, state));
   if (JSON.stringify(migrated) === JSON.stringify(state)) return; // no change
   state = migrated;
   hydrated = true;

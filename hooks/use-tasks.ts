@@ -210,6 +210,7 @@ export function useTasks() {
     setState((prev) => ({
       ...prev,
       tasks: prev.tasks.filter((t) => t.id !== id),
+      deletedAt: { ...prev.deletedAt, [id]: Date.now() },
     }));
   };
 

@@ -41,6 +41,7 @@ export function useNotes() {
     setState((prev) => ({
       ...prev,
       notes: prev.notes.filter((n) => n.id !== id),
+      deletedAt: { ...prev.deletedAt, [id]: Date.now() },
     }));
   };
 

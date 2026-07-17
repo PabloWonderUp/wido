@@ -62,6 +62,12 @@ export interface AppState {
   tasks: Task[];
   clients: Client[];
   notes: Note[];
+  /**
+   * Tombstones: id -> deletion time (ms). Lets deletes survive a merge instead
+   * of a deleted item reappearing from another device's copy. Pruned after a
+   * while (see lib/merge.ts). Keyed by task/client/note id (all unique).
+   */
+  deletedAt?: Record<string, number>;
 }
 
 export type StatusFilter = "all" | TaskStatus;
