@@ -12,6 +12,7 @@ import {
   Plus,
   Star,
   StickyNote,
+  Trash2,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -68,6 +69,7 @@ export default function Home() {
     reorderTasks,
     setStatus: setTaskStatus,
     toggleSubtask,
+    clearAllTasks,
   } = useTasks();
   const { clients, getClient } = useClients();
   const { open: openNote } = useNoteDialog();
@@ -200,6 +202,22 @@ export default function Home() {
   const toggleExpand = (id: string) =>
     setExpandedId((cur) => (cur === id ? null : id));
 
+  const handleClearAllTasks = () => {
+    const count = tasks.length;
+    if (count === 0) {
+      window.alert("There are no tasks to delete.");
+      return;
+    }
+    if (
+      window.confirm(
+        `Delete all ${count} task${count === 1 ? "" : "s"}? Clients and notes are kept.`
+      ) &&
+      window.confirm("Are you sure? This clears every task on all your devices.")
+    ) {
+      clearAllTasks();
+    }
+  };
+
   return (
     <main
       className={cn(
@@ -247,6 +265,16 @@ export default function Home() {
           </Button>
           <ClientManagerButton />
           <DataMenu />
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete all tasks"
+            title="Delete all tasks"
+            onClick={handleClearAllTasks}
+            className="text-muted-foreground hover:text-red-500"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
           <ThemeToggle />
           <AuthButton />
           <Button
