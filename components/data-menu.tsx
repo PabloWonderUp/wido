@@ -1,20 +1,29 @@
 "use client";
 
 import * as React from "react";
-import { Database, Download, Upload } from "lucide-react";
+import { Database, Download, History, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getState, replaceState } from "@/hooks/store";
+import { useTasks } from "@/hooks/use-tasks";
 import { exportToJson, importFromJson } from "@/lib/storage";
+import { historyAvailable } from "@/lib/storage/history";
+import { HistoryDialog } from "@/components/history-dialog";
 
 export function DataMenu() {
+  const { clearAllTasks } = useTasks();
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
+  // History is cloud-only and the active user is set asynchronously after
+  // login, so evaluate it each time the menu opens rather than on mount.
+  const [canRecover, setCanRecover] = React.useState(false);
 
   const handleExport = () => {
     const json = exportToJson(getState());
@@ -26,6 +35,24 @@ export function DataMenu() {
     a.download = `tasks-backup-${stamp}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteAll = () => {
+    const count = getState().tasks.length;
+    if (count === 0) {
+      window.alert("There are no tasks to delete.");
+      return;
+    }
+    // Two-step confirm — this is destructive (recoverable only via Version
+    // history / a backup).
+    if (
+      window.confirm(
+        `Delete all ${count} task${count === 1 ? "" : "s"}? Clients and notes are kept.`
+      ) &&
+      window.confirm("Are you sure? This clears every task on all your devices.")
+    ) {
+      clearAllTasks();
+    }
   };
 
   const handleImportFile = async (file: File) => {
@@ -50,7 +77,11 @@ export function DataMenu() {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(o) => {
+          if (o) setCanRecover(historyAvailable());
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" aria-label="Backup & restore">
             <Database className="h-4 w-4" />
@@ -63,8 +94,25 @@ export function DataMenu() {
           <DropdownMenuItem onSelect={() => fileRef.current?.click()}>
             <Upload className="h-4 w-4" /> Import backup
           </DropdownMenuItem>
+          {canRecover && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setHistoryOpen(true)}>
+                <History className="h-4 w-4" /> Version history
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={handleDeleteAll}
+            className="text-red-500 focus:text-red-500"
+          >
+            <Trash2 className="h-4 w-4" /> Delete all tasks
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <HistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} />
 
       <input
         ref={fileRef}

@@ -214,6 +214,16 @@ export function useTasks() {
     }));
   };
 
+  /** Delete every task, tombstoning each so they don't resurrect via merge. */
+  const clearAllTasks = () => {
+    setState((prev) => {
+      const now = Date.now();
+      const deletedAt = { ...prev.deletedAt };
+      for (const t of prev.tasks) deletedAt[t.id] = now;
+      return { ...prev, tasks: [], deletedAt };
+    });
+  };
+
   /** Archive / unarchive: hides from the main views but keeps the task. */
   const toggleArchived = (id: string) => {
     setState((prev) => ({
@@ -310,6 +320,7 @@ export function useTasks() {
     setStatus,
     updateTask,
     deleteTask,
+    clearAllTasks,
     toggleArchived,
     togglePriority,
     reorderPriorities,
