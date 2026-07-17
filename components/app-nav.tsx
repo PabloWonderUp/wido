@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock, ListTodo, NotebookPen, Timer } from "lucide-react";
+import { Clock, ListTodo, NotebookPen, Timer, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { VersionBadge } from "@/components/version-badge";
 
 const ITEMS = [
   { href: "/", label: "Tasks", icon: ListTodo },
+  { href: "/clients", label: "Clients", icon: Users },
   { href: "/timer", label: "Timer", icon: Timer },
   { href: "/hours", label: "Hours", icon: Clock },
   { href: "/notes", label: "Notes", icon: NotebookPen },

@@ -58,13 +58,11 @@ export function ClientManagerButton() {
   );
 }
 
-function ClientManagerDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+/**
+ * The clients list + add form. Shared by the quick dialog and the dedicated
+ * /clients page. `listClassName` lets the dialog cap its height and scroll.
+ */
+export function ClientsEditor({ listClassName }: { listClassName?: string }) {
   const { clients, addClient, updateClient, deleteClient } = useClients();
   const [newName, setNewName] = React.useState("");
 
@@ -72,6 +70,52 @@ function ClientManagerDialog({
     if (addClient(newName)) setNewName("");
   };
 
+  return (
+    <div className="space-y-3">
+      <div className={cn("space-y-2", listClassName)}>
+        {clients.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No clients yet.
+          </p>
+        )}
+        {clients.map((client) => (
+          <ClientRow
+            key={client.id}
+            client={client}
+            onUpdate={(u) => updateClient(client.id, u)}
+            onDelete={() => deleteClient(client.id)}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-border pt-3">
+        <div className="flex h-9 w-9 items-center justify-center">
+          <Plus className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") add();
+          }}
+          placeholder="New client name…"
+          className="h-9 flex-1 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+        <Button size="sm" onClick={add} disabled={!newName.trim()}>
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ClientManagerDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -81,40 +125,7 @@ function ClientManagerDialog({
             Add, rename, recolor or delete. Click the circle to set a logo.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-          {clients.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No clients yet.
-            </p>
-          )}
-          {clients.map((client) => (
-            <ClientRow
-              key={client.id}
-              client={client}
-              onUpdate={(u) => updateClient(client.id, u)}
-              onDelete={() => deleteClient(client.id)}
-            />
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 border-t border-border pt-3">
-          <div className="flex h-9 w-9 items-center justify-center">
-            <Plus className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") add();
-            }}
-            placeholder="New client name…"
-            className="h-9 flex-1 rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-          <Button size="sm" onClick={add} disabled={!newName.trim()}>
-            Add
-          </Button>
-        </div>
+        <ClientsEditor listClassName="max-h-[50vh] overflow-y-auto pr-1" />
       </DialogContent>
     </Dialog>
   );

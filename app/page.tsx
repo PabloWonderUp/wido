@@ -265,16 +265,6 @@ export default function Home() {
           </Button>
           <ClientManagerButton />
           <DataMenu />
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Delete all tasks"
-            title="Delete all tasks"
-            onClick={handleClearAllTasks}
-            className="text-muted-foreground hover:text-red-500"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
           <ThemeToggle />
           <AuthButton />
           <Button
@@ -321,21 +311,31 @@ export default function Home() {
         </div>
 
         {view === "list" ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                <ArrowUpDown className="h-3.5 w-3.5" />
-                Sort: {SORT_LABELS[sort]}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {(Object.keys(SORT_LABELS) as SortMode[]).map((s) => (
-                <DropdownMenuItem key={s} onSelect={() => setSort(s)}>
-                  {SORT_LABELS[s]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  Sort: {SORT_LABELS[sort]}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(SORT_LABELS) as SortMode[]).map((s) => (
+                  <DropdownMenuItem key={s} onSelect={() => setSort(s)}>
+                    {SORT_LABELS[s]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button
+              onClick={handleClearAllTasks}
+              title="Delete all tasks"
+              className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          </div>
         ) : view === "board" ? (
           <div className="inline-flex items-center gap-1 rounded-full bg-muted p-1">
             {(["status", "client"] as BoardGroupBy[]).map((g) => (
