@@ -24,6 +24,13 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
+  // Only handle same-origin http(s) requests. Browser-extension URLs
+  // (chrome-extension://, safari-web-extension://, …) and other schemes can't
+  // be written to the Cache and throw "Request scheme is unsupported" on put.
+  const url = new URL(request.url);
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  if (url.origin !== self.location.origin) return;
+
   // Navigations: network-first, fall back to cached shell when offline.
   if (request.mode === "navigate") {
     event.respondWith(
