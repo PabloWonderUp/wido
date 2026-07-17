@@ -11,6 +11,18 @@ import { mergeStates } from "@/lib/merge";
  */
 const EMPTY: AppState = { tasks: [], clients: [], notes: [] };
 
+/**
+ * Jittered exponential backoff between compare-and-swap retries. Without the
+ * jitter, two devices retrying on the same cadence livelock forever — each one
+ * bumps `updated_at` and invalidates the other's CAS. The random spread lets
+ * one writer win a round while the other waits.
+ */
+function backoff(attempt: number): Promise<void> {
+  const base = Math.min(1200, 50 * 2 ** attempt); // 50,100,200,…capped
+  const ms = base + Math.floor(Math.random() * 150);
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export const supabaseAdapter: StorageAdapter = {
   async load(): Promise<AppState> {
     const sb = getSupabase();
@@ -55,7 +67,8 @@ export const supabaseAdapter: StorageAdapter = {
     const userId = getActiveUser();
     if (!sb || !userId) return state;
 
-    for (let attempt = 0; attempt < 6; attempt++) {
+    const ATTEMPTS = 8;
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const { data, error } = await sb
         .from("app_state")
         .select("state, updated_at")
@@ -70,6 +83,7 @@ export const supabaseAdapter: StorageAdapter = {
           .from("app_state")
           .insert({ user_id: userId, state, updated_at: new Date().toISOString() });
         if (!insErr) return state;
+        await backoff(attempt);
         continue;
       }
 
@@ -82,8 +96,29 @@ export const supabaseAdapter: StorageAdapter = {
         .select("user_id");
       if (updErr) throw new Error(`supabase merged save failed: ${updErr.message}`);
       if (updated && updated.length > 0) return merged; // won the write
-      // Version moved on (another device wrote) — retry with fresher data.
+      // Version moved on (another device wrote) — back off (jittered) so
+      // concurrent writers desynchronize instead of livelocking, then retry.
+      await backoff(attempt);
     }
-    throw new Error("supabase save: too many concurrent writers, gave up");
+
+    // Last resort: the CAS kept losing to concurrent writers. Do ONE
+    // unconditional merged write so progress is GUARANTEED and this device's
+    // edits/tombstones actually reach the cloud. Safe: it's a union+tombstone
+    // merge of the latest cloud state, so it can't drop items or resurrect
+    // deletions — the worst case is a rare concurrent edit needing one more sync.
+    const { data: latest, error: readErr } = await sb
+      .from("app_state")
+      .select("state")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (readErr) throw new Error(`supabase final read failed: ${readErr.message}`);
+    const merged = latest ? mergeStates(coerceState(latest.state), state) : state;
+    const { error: finalErr } = await sb.from("app_state").upsert(
+      { user_id: userId, state: merged, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+    if (finalErr) throw new Error(`supabase final save failed: ${finalErr.message}`);
+    console.warn("[wido] saveMerged: CAS exhausted → forced merged write");
+    return merged;
   },
 };
