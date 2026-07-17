@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { makeId, nextClientColor } from "@/lib/utils";
+import { makeId, mapStamped, nextClientColor } from "@/lib/utils";
 import type { Client, TimeEntry } from "@/lib/types";
 import { getState, setState, subscribe } from "./store";
 
@@ -22,6 +22,7 @@ export function useClients() {
       id: makeId(),
       name: trimmed,
       color: nextClientColor(state.clients.length),
+      updatedAt: Date.now(),
     };
     setState((prev) => ({ ...prev, clients: [...prev.clients, client] }));
     return client;
@@ -30,7 +31,7 @@ export function useClients() {
   const updateClient = (id: string, updates: Partial<Client>) => {
     setState((prev) => ({
       ...prev,
-      clients: prev.clients.map((c) =>
+      clients: mapStamped(prev.clients, (c) =>
         c.id === id ? { ...c, ...updates } : c
       ),
     }));
@@ -41,7 +42,7 @@ export function useClients() {
     setState((prev) => ({
       ...prev,
       clients: prev.clients.filter((c) => c.id !== id),
-      tasks: prev.tasks.map((t) =>
+      tasks: mapStamped(prev.tasks, (t) =>
         t.client === id ? { ...t, client: undefined } : t
       ),
       deletedAt: { ...prev.deletedAt, [id]: Date.now() },
@@ -68,7 +69,7 @@ export function useClients() {
     };
     setState((prev) => ({
       ...prev,
-      clients: prev.clients.map((c) =>
+      clients: mapStamped(prev.clients, (c) =>
         c.id === id
           ? { ...c, timeEntries: [...(c.timeEntries ?? []), entry] }
           : c
@@ -83,7 +84,7 @@ export function useClients() {
   ) => {
     setState((prev) => ({
       ...prev,
-      clients: prev.clients.map((c) =>
+      clients: mapStamped(prev.clients, (c) =>
         c.id === id
           ? {
               ...c,
@@ -99,7 +100,7 @@ export function useClients() {
   const deleteClientTime = (id: string, entryId: string) => {
     setState((prev) => ({
       ...prev,
-      clients: prev.clients.map((c) =>
+      clients: mapStamped(prev.clients, (c) =>
         c.id === id
           ? {
               ...c,

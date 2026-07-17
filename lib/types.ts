@@ -36,6 +36,7 @@ export interface Task {
   subtasks?: SubTask[]; // checklist inside a project task
   archived?: boolean; // hidden from the main views; kept for reference
   priorityRank?: number; // 1..5 slot in the daily "Top 5" focus list
+  updatedAt?: number; // last edit time — newest wins in the cross-device merge
 }
 
 export interface Note {
@@ -56,6 +57,7 @@ export interface Client {
   monthlyHoursTarget?: number; // optional monthly hours goal
   hourlyRate?: number; // optional $/hour to compute earnings
   timeEntries?: TimeEntry[]; // hours logged directly to the client (not via a task)
+  updatedAt?: number; // last edit time — newest wins in the cross-device merge
 }
 
 export interface AppState {

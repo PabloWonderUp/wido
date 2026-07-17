@@ -51,6 +51,7 @@ export async function restAppendTimeEntry(token, userId, attach, seconds) {
     throw new Error(`That ${attach.type} no longer exists in Wido.`);
   }
   target.timeEntries = [...(target.timeEntries ?? []), entry];
+  target.updatedAt = Date.now(); // so the entity merges as freshly edited
 
   const res = await fetch(`${REST}/app_state`, {
     method: "POST",
@@ -79,6 +80,7 @@ export async function restCreateTask(token, userId, title, clientId) {
     status: "todo",
     order: minOrder - 1,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
     ...(clientId ? { client: clientId } : {}),
   };
   state.tasks = [task, ...state.tasks];

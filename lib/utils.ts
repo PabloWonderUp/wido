@@ -240,3 +240,21 @@ export function makeId(): string {
   }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+/**
+ * Map over entities, stamping `updatedAt` on the ones the mapper actually
+ * changed (i.e. returned a new reference for). This gives every edit a per-
+ * entity timestamp so the cross-device merge can keep the NEWEST version of an
+ * item instead of "whichever device wrote last" — the key to priorities, client
+ * time and message flags staying consistent across devices.
+ */
+export function mapStamped<T extends { updatedAt?: number }>(
+  items: T[],
+  mapper: (item: T) => T,
+  now: number = Date.now()
+): T[] {
+  return items.map((item) => {
+    const next = mapper(item);
+    return next === item ? item : { ...next, updatedAt: now };
+  });
+}
