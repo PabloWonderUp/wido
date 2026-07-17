@@ -32,3 +32,8 @@ create policy "app_state_update_own"
   on public.app_state for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Live cross-device sync: let Realtime broadcast changes to this table so every
+-- signed-in device updates the instant another one writes. RLS still applies,
+-- so each user only receives their own row's changes.
+alter publication supabase_realtime add table public.app_state;

@@ -20,7 +20,11 @@ export const supabaseAdapter: StorageAdapter = {
       .select("state")
       .eq("user_id", userId)
       .maybeSingle();
-    if (error || !data) return EMPTY;
+    // Distinguish "couldn't reach the cloud" from "no data yet": on error we
+    // MUST throw so callers never mistake a failed read for an empty account
+    // and overwrite good cloud data with nothing.
+    if (error) throw new Error(`supabase load failed: ${error.message}`);
+    if (!data) return EMPTY; // genuinely no row for this user yet
     return coerceState(data.state);
   },
 
@@ -28,7 +32,7 @@ export const supabaseAdapter: StorageAdapter = {
     const sb = getSupabase();
     const userId = getActiveUser();
     if (!sb || !userId) return;
-    await sb.from("app_state").upsert(
+    const { error } = await sb.from("app_state").upsert(
       {
         user_id: userId,
         state,
@@ -36,5 +40,7 @@ export const supabaseAdapter: StorageAdapter = {
       },
       { onConflict: "user_id" }
     );
+    // Surface write failures instead of silently losing the user's data.
+    if (error) throw new Error(`supabase save failed: ${error.message}`);
   },
 };

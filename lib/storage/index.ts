@@ -24,6 +24,18 @@ export function isTauri(): boolean {
   );
 }
 
+/**
+ * A stable key identifying the backend the store is currently bound to.
+ * The store only persists to a backend whose key matches the one it last
+ * loaded from successfully — this is what prevents an empty/stale in-memory
+ * state (e.g. during the pre-auth window) from clobbering the real cloud data.
+ */
+export function currentBackendKey(): string {
+  const uid = getActiveUser();
+  if (uid) return `cloud:${uid}`;
+  return isTauri() ? "sqlite" : "local";
+}
+
 function getAdapter(): StorageAdapter {
   if (getActiveUser()) return supabaseAdapter; // signed in -> cloud
   return isTauri() ? sqliteAdapter : localAdapter;
